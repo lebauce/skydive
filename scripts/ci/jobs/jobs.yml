@@ -314,6 +314,7 @@
       - shell: cd src/github.com/skydive-project/skydive && SHELL=dumb scripts/ci/run-devstack.sh
     publishers:
       - chuck-norris
+    node: devstack
 
 - job:
     name: skydive-coverage
