@@ -25,6 +25,9 @@ if [ -z "$ETCD" ]; then
 	ETCD_EMBEDDED=true
 else
 	ETCD_EMBEDDED=false
+	sed -i 's/ETCD_ADVERTISE_CLIENT_URLS=\(.*\)/ETCD_ADVERTISE_CLIENT_URLS="http:\/\/0.0.0.0:2379"/' /etc/etcd/etcd.conf
+	sed -i 's/ETCD_LISTEN_CLIENT_URLS=\(.*\)/ETCD_LISTEN_CLIENT_URLS="http:\/\/0.0.0.0:2379"/' /etc/etcd/etcd.conf
+	sudo systemctl restart etcd
 fi
 
 mkdir -p $TEMP_DIR
@@ -191,10 +194,6 @@ flow:
   protocol: $FLOW_PROTOCOL
 netns:
   run_path: $TEMP_DIR/$NAME-netns
-etcd:
-  data_dir: $TEMP_DIR/$NAME-etcd
-  servers:
-    - http://$ETCD
 ovs:
   ovsdb: unix://$TEMP_DIR/$NAME.sock
 logging:

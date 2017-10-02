@@ -8,7 +8,6 @@ dir="$(dirname "$0")"
 # this should deploy in the CI image
 sudo yum install -y screen inotify-tools iperf
 
-sudo systemctl stop etcd.service
 sleep 15
 
 sudo iptables -F
@@ -23,8 +22,9 @@ export TLS=true
 export SKYDIVE=${GOPATH}/bin/skydive
 export FLOW_PROTOCOL=websocket
 export SKYDIVE_LOGGING_LEVEL=DEBUG
+export ETCD=http://localhost:2379
 
-make test.functionals TAGS="scale" VERBOSE=true TIMEOUT=10m TEST_PATTERN=Scale
+make test.functionals TAGS="scale" VERBOSE=true TIMEOUT=10m TEST_PATTERN=Scale ARGS="-etcd.server http://localhost:2379"
 status=$?
 
 cat /tmp/skydive-scale/{analyzer,agent}-?.log | sed -r "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" | perl -ne '$d=$1 if /^(\d+-\d+-\d+),/; $k{$d}.=$_; END{print $k{$_} for sort keys(%k);}'
