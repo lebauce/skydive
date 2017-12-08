@@ -1,7 +1,6 @@
 [![Build Status](https://ci.skydive.network/job/skydive-create-binaries/badge/icon)](https://ci.skydive.network/job/skydive-create-binaries/)
 [![Go Report Card](https://goreportcard.com/badge/github.com/skydive-project/skydive)](https://goreportcard.com/report/github.com/skydive-project/skydive)
-[![Coverage Status](https://coveralls.io/repos/github/skydive-project/skydive/badge.svg?branch=master)](https://coveralls.io/github/skydive-project/skydive?branch=master)
-
+[![Coverage Status](https://codecov.io/gh/skydive-project/skydive/branch/master/graph/badge.svg)](https://codecov.io/gh/skydive-project/skydive)
 # Skydive
 
 Skydive is an open source real-time network topology and protocols analyzer.
