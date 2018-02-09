@@ -1813,18 +1813,6 @@
 			"revisionTime": "2017-03-08T20:54:49Z"
 		},
 		{
-			"checksumSHA1": "5ARrN3Zq+E9zazFb/N+b08Serys=",
-			"path": "golang.org/x/net/context",
-			"revision": "6acef71eb69611914f7a30939ea9f6e194c78172",
-			"revisionTime": "2016-02-25T17:50:37Z"
-		},
-		{
-			"checksumSHA1": "WHc3uByvGaMcnSoI21fhzYgbOgg=",
-			"path": "golang.org/x/net/context/ctxhttp",
-			"revision": "ffcf1bedda3b04ebb15a168a59800a73d6dc0f4d",
-			"revisionTime": "2017-03-29T01:43:45Z"
-		},
-		{
 			"checksumSHA1": "szmox7VF0nawZ4/erMCImLRDheQ=",
 			"path": "golang.org/x/net/http2",
 			"revision": "6acef71eb69611914f7a30939ea9f6e194c78172"
