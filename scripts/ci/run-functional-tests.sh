@@ -4,10 +4,7 @@ set -v
 
 dir="$(dirname "$0")"
 . "${dir}/install-go.sh"
-
 . "${dir}/install-minikube.sh" install
-. "${dir}/install-minikube.sh" stop
-. "${dir}/install-minikube.sh" start
 
 sudo iptables -F
 for i in $(find /proc/sys/net/bridge/ -type f) ; do echo 0 | sudo tee $i ; done
