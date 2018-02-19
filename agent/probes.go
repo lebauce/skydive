@@ -35,6 +35,7 @@ import (
 	"github.com/skydive-project/skydive/topology/probes/neutron"
 	"github.com/skydive-project/skydive/topology/probes/opencontrail"
 	"github.com/skydive-project/skydive/topology/probes/ovsdb"
+	"github.com/skydive-project/skydive/topology/probes/lxd"
 )
 
 // NewTopologyProbeBundleFromConfig creates a new topology probe.ProbeBundle based on the configuration
@@ -68,6 +69,13 @@ func NewTopologyProbeBundleFromConfig(g *graph.Graph, n *graph.Node) (*probe.Pro
 		switch t {
 		case "ovsdb":
 			probes[t] = ovsdb.NewOvsdbProbeFromConfig(g, n)
+		case "lxd":
+			lxdURL := config.GetConfig().GetString("lxd.url")
+			lxdProbe, err := lxd.NewLxdProbe(nsProbe, lxdURL)
+			if err != nil {
+				return nil, err
+			}
+			probes[t] = lxdProbe
 		case "docker":
 			dockerURL := config.GetConfig().GetString("docker.url")
 			dockerProbe, err := docker.NewDockerProbe(nsProbe, dockerURL)
