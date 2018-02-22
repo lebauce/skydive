@@ -3,35 +3,35 @@
 package lxd
 
 import (
-	"fmt"
-	"github.com/vishvananda/netns"
-	"time"
 	"context"
+	"fmt"
+	lxd "github.com/lxc/lxd/client"
+	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/topology"
+	"github.com/skydive-project/skydive/topology/graph"
+	ns "github.com/skydive-project/skydive/topology/probes/netns"
+	"github.com/vishvananda/netns"
 	"sync"
 	"sync/atomic"
-        "github.com/skydive-project/skydive/common"
-        "github.com/skydive-project/skydive/topology"
-        "github.com/skydive-project/skydive/topology/graph"
-        "github.com/skydive-project/skydive/logging"
-        ns "github.com/skydive-project/skydive/topology/probes/netns"
-	lxd "github.com/lxc/lxd/client"
+	"time"
 )
 
 type containerInfo struct {
-	Pid int
+	Pid  int
 	Node *graph.Node
 }
 
 type LxdProbe struct {
 	sync.RWMutex
 	*ns.NetNSProbe
-	state int64
-	wg sync.WaitGroup
-	connected atomic.Value
-	cancel context.CancelFunc
+	state        int64
+	wg           sync.WaitGroup
+	connected    atomic.Value
+	cancel       context.CancelFunc
 	containerMap map[string]containerInfo
-	hostNs netns.NsHandle
-	client lxd.ContainerServer
+	hostNs       netns.NsHandle
+	client       lxd.ContainerServer
 }
 
 func (probe *LxdProbe) containerNamespace(pid int) string {
@@ -76,18 +76,18 @@ func (probe *LxdProbe) registerContainer(id string) {
 	}
 
 	probe.Graph.Lock()
-        metadata := graph.Metadata{
-                "Type": "container",
-                "Name": id,
-		"LXDSettings": map[string]interface{} { },
-        }
+	metadata := graph.Metadata{
+		"Type":        "container",
+		"Name":        id,
+		"LXDSettings": map[string]interface{}{},
+	}
 
 	containerNode := probe.Graph.NewNode(graph.GenID(), metadata)
 	topology.AddOwnershipLink(probe.Graph, n, containerNode, nil)
 	probe.Graph.Unlock()
 
 	probe.containerMap[id] = containerInfo{
-		Pid: int(state.Pid),
+		Pid:  int(state.Pid),
 		Node: containerNode,
 	}
 }
@@ -142,7 +142,6 @@ func (probe *LxdProbe) connect() (err error) {
 		probe.unregisterContainer(n.Name)
 	}
 
-
 	return nil
 }
 
@@ -171,25 +170,24 @@ func (probe *LxdProbe) Start() {
 
 func (probe *LxdProbe) Stop() {
 	if !atomic.CompareAndSwapInt64(&probe.state, common.RunningState, common.StoppingState) {
-                return
-        }
+		return
+	}
 
-        if probe.connected.Load() == true {
-                probe.cancel()
-                probe.wg.Wait()
-        }
+	if probe.connected.Load() == true {
+		probe.cancel()
+		probe.wg.Wait()
+	}
 
-        atomic.StoreInt64(&probe.state, common.StoppedState)
+	atomic.StoreInt64(&probe.state, common.StoppedState)
 }
 
 func NewLxdProbe(nsProbe *ns.NetNSProbe, lxdURL string) (*LxdProbe, error) {
 	probe := &LxdProbe{
-		NetNSProbe: nsProbe,
-		state: common.StoppedState,
+		NetNSProbe:   nsProbe,
+		state:        common.StoppedState,
 		containerMap: make(map[string]containerInfo),
 	}
 	logging.GetLogger().Debugf("Probe created")
 
 	return probe, nil
 }
-
