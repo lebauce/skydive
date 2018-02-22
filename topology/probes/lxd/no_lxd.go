@@ -12,8 +12,9 @@ type LxdProbe struct{}
 
 // Start the probe
 func (u *LxdProbe) Start() {}
+
 // Stop the probe
-func (u *LxdProbe) Stop()  {}
+func (u *LxdProbe) Stop() {}
 
 // NewLxdProbe creates a new topology Lxd probe
 func NewLxdProbe(nsProbe *ns.NetNSProbe, lxdURL string) (*LxdProbe, error) {
