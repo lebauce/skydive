@@ -5,7 +5,6 @@ package lxd
 import (
 	"fmt"
 	"github.com/vishvananda/netns"
-//	"github.com/kr/pretty"
 	"time"
 	"context"
 	"sync"
@@ -164,7 +163,7 @@ func (probe *LxdProbe) Start() {
 				time.Sleep(1 * time.Second)
 			}
 
-			time.Sleep(2 * time.Second)
+			time.Sleep(30 * time.Second) // avoid polling too much
 			probe.wg.Wait()
 		}
 	}()
