@@ -22,6 +22,7 @@ type containerInfo struct {
 	Node *graph.Node
 }
 
+// LxdProbe describes a LXD topology graph that enhance the graph
 type LxdProbe struct {
 	sync.RWMutex
 	*ns.NetNSProbe
@@ -145,6 +146,7 @@ func (probe *LxdProbe) connect() (err error) {
 	return nil
 }
 
+// Start the probe
 func (probe *LxdProbe) Start() {
 	if !atomic.CompareAndSwapInt64(&probe.state, common.StoppedState, common.RunningState) {
 		return
@@ -168,6 +170,7 @@ func (probe *LxdProbe) Start() {
 	}()
 }
 
+// Stop the probe
 func (probe *LxdProbe) Stop() {
 	if !atomic.CompareAndSwapInt64(&probe.state, common.RunningState, common.StoppingState) {
 		return
@@ -181,6 +184,7 @@ func (probe *LxdProbe) Stop() {
 	atomic.StoreInt64(&probe.state, common.StoppedState)
 }
 
+// NewLxdProbe creates a new topology Lxd probe
 func NewLxdProbe(nsProbe *ns.NetNSProbe, lxdURL string) (*LxdProbe, error) {
 	probe := &LxdProbe{
 		NetNSProbe:   nsProbe,
