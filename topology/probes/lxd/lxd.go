@@ -69,11 +69,15 @@ func (probe *LxdProbe) registerContainer(id string) {
 	if probe.hostNs.Equal(nsHandle) {
 		n = probe.Root
 	} else {
-		n = probe.Register(namespace, id)
+		n, err = probe.Register(namespace, id)
 
-		probe.Graph.Lock()
-		probe.Graph.AddMetadata(n, "Manager", "lxd")
-		probe.Graph.Unlock()
+		if err == nil {
+			probe.Graph.Lock()
+			probe.Graph.AddMetadata(n, "Manager", "lxd")
+			probe.Graph.Unlock()
+		} else {
+			logging.GetLogger().Errorf("Error registering probe: %s", err)
+		}
 	}
 
 	probe.Graph.Lock()
