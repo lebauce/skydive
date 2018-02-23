@@ -52,7 +52,7 @@ func newHostIndexer(g *graph.Graph) *graph.MetadataIndexer {
 }
 
 func (c *nodeProbe) newMetadata(node *v1.Node) graph.Metadata {
-	return newMetadata("node", node.GetName(), node)
+	return newMetadata("node", node.GetNamespace(), node.GetName(), node)
 }
 
 func linkNodeToHost(g *graph.Graph, host, node *graph.Node) {
@@ -76,7 +76,7 @@ func (c *nodeProbe) onAdd(obj interface{}) {
 	nodeNodes := c.nodeIndexer.Get(hostName)
 	var nodeNode *graph.Node
 	if len(nodeNodes) == 0 {
-		nodeNode = c.graph.NewNode(nodeUID(node), c.newMetadata(node))
+		nodeNode = newNode(c.graph, nodeUID(node), c.newMetadata(node))
 	} else {
 		nodeNode = nodeNodes[0]
 		addMetadata(c.graph, nodeNode, node)

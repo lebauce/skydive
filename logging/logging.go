@@ -194,7 +194,7 @@ func shortCallerWithClassFunctionEncoder(caller zapcore.EntryCaller, enc zapcore
 }
 
 func newEncoderConfig() zapcore.EncoderConfig {
-	color := config.GetConfig().GetBool("logging.color")
+	color := config.GetBool("logging.color")
 	encoder := zapcore.EncoderConfig{
 		// Keys can be anything except the empty string.
 		TimeKey:        "ts",
@@ -253,15 +253,15 @@ func initLogger() (err error) {
 			}
 			backends = append(backends, zapcore.NewCore(encoder, zapcore.Lock(file), msgPriority))
 		case "syslog":
-			w, err := newSyslog(cfg.GetString("logging.syslog.tag"))
-			if err != nil {
-				return err
-			}
 			encoder := defaultEncoder
 			if cfg.GetString("logging.syslog.encoder") == "json" {
 				encoder = zapcore.NewJSONEncoder(newEncoderConfig())
 			}
-			backends = append(backends, zapcore.NewCore(encoder, zapcore.AddSync(w), msgPriority))
+			syslogTag := cfg.GetString("logging.syslog.tag")
+			backends, err = addSyslogBackend(backends, msgPriority, encoder, syslogTag)
+			if err != nil {
+				return err
+			}
 		case "stderr":
 			encoder := defaultEncoder
 			if cfg.GetString("logging.stderr.encoder") == "json" {

@@ -56,6 +56,7 @@ type Agent struct {
 	rootNode            *graph.Node
 	topologyProbeBundle *probe.ProbeBundle
 	flowProbeBundle     *probe.ProbeBundle
+	flowPipeline        *flow.EnhancerPipeline
 	flowTableAllocator  *flow.TableAllocator
 	flowClientPool      *analyzer.FlowClientPool
 	onDemandProbeServer *ondemand.OnDemandProbeServer
@@ -91,8 +92,10 @@ type AnalyzerConnStatus struct {
 
 // AgentStatus represents the status of an agent
 type AgentStatus struct {
-	Clients   map[string]shttp.WSConnStatus
-	Analyzers map[string]AnalyzerConnStatus
+	Clients        map[string]shttp.WSConnStatus
+	Analyzers      map[string]AnalyzerConnStatus
+	TopologyProbes []string
+	FlowProbes     []string
 }
 
 // GetStatus returns the status of an agent
@@ -112,8 +115,10 @@ func (a *Agent) GetStatus() interface{} {
 	}
 
 	return &AgentStatus{
-		Clients:   a.wsServer.GetStatus(),
-		Analyzers: analyzers,
+		Clients:        a.wsServer.GetStatus(),
+		Analyzers:      analyzers,
+		TopologyProbes: a.topologyProbeBundle.ActiveProbes(),
+		FlowProbes:     a.flowProbeBundle.ActiveProbes(),
 	}
 }
 
@@ -121,6 +126,7 @@ func (a *Agent) GetStatus() interface{} {
 func (a *Agent) Start() {
 	go a.httpServer.Serve()
 
+	a.flowPipeline.Start()
 	a.wsServer.Start()
 	a.topologyProbeBundle.Start()
 	a.flowProbeBundle.Start()
@@ -139,6 +145,7 @@ func (a *Agent) Stop() {
 	a.wsServer.Stop()
 	a.flowClientPool.Close()
 	a.onDemandProbeServer.Stop()
+	a.flowPipeline.Stop()
 
 	if tr, ok := http.DefaultTransport.(interface {
 		CloseIdleConnections()
@@ -202,16 +209,15 @@ func NewAgent() (*Agent, error) {
 		return nil, err
 	}
 
-	updateTime := time.Duration(config.GetConfig().GetInt("flow.update")) * time.Second
-	expireTime := time.Duration(config.GetConfig().GetInt("flow.expire")) * time.Second
-	cleanup := time.Duration(config.GetConfig().GetInt("cache.cleanup")) * time.Second
+	updateTime := time.Duration(config.GetInt("flow.update")) * time.Second
+	expireTime := time.Duration(config.GetInt("flow.expire")) * time.Second
+	cleanup := time.Duration(config.GetInt("cache.cleanup")) * time.Second
 
 	cache := cache.New(expireTime*2, cleanup)
 
 	pipeline := flow.NewEnhancerPipeline(
 		enhancers.NewGraphFlowEnhancer(g, cache),
-		enhancers.NewSocketInfoEnhancer(expireTime*2, cleanup),
-	)
+		enhancers.NewSocketInfoEnhancer(expireTime*2, cleanup))
 
 	// check that the neutron probe if loaded if so add the neutron flow enhancer
 	if topologyProbeBundle.GetProbe("neutron") != nil {
@@ -242,6 +248,7 @@ func NewAgent() (*Agent, error) {
 		rootNode:            rootNode,
 		topologyProbeBundle: topologyProbeBundle,
 		flowProbeBundle:     flowProbeBundle,
+		flowPipeline:        pipeline,
 		flowTableAllocator:  flowTableAllocator,
 		flowClientPool:      flowClientPool,
 		onDemandProbeServer: onDemandProbeServer,

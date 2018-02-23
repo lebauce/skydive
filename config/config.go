@@ -30,6 +30,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	// Viper remote client need to be internally initialized
 	_ "github.com/spf13/viper/remote"
@@ -37,11 +38,23 @@ import (
 	"github.com/skydive-project/skydive/common"
 )
 
-var cfg *viper.Viper
-
 // ErrNoAnalyzerSpecified error no analyzer section is specified in the configuration file
+var ErrNoAnalyzerSpecified = errors.New("No analyzer specified in the configuration file")
+
 var (
-	ErrNoAnalyzerSpecified = errors.New("No analyzer specified in the configuration file")
+	cfg           *viper.Viper
+	relocationMap = map[string]string{
+		"auth.keystone.auth_url":               "openstack.auth_url",
+		"auth.keystone.tenant_name":            "openstack.tenant_name",
+		"auth.keystone.domain_name":            "openstack.domain_name",
+		"agent.topology.neutron.auth_url":      "openstack.auth_url",
+		"agent.topology.neutron.domain_name":   "openstack.domain_name",
+		"agent.topology.neutron.endpoint_type": "openstack.endpoint_type",
+		"agent.topology.neutron.password":      "openstack.password",
+		"agent.topology.neutron.region_name":   "openstack.region_name",
+		"agent.topology.neutron.tenant_name":   "openstack.tenant_name",
+		"agent.topology.neutron.username":      "openstack.username",
+	}
 )
 
 func init() {
@@ -60,25 +73,17 @@ func init() {
 	cfg.SetDefault("agent.listen", "127.0.0.1:8081")
 	cfg.SetDefault("agent.topology.probes", []string{"ovsdb"})
 	cfg.SetDefault("agent.topology.netlink.metrics_update", 30)
+	cfg.SetDefault("agent.topology.neutron.endpoint_type", "public")
 	cfg.SetDefault("agent.X509_servername", "")
 
-	cfg.SetDefault("analyzer.bandwidth_absolute_active", 1)
-	cfg.SetDefault("analyzer.bandwidth_absolute_alert", 1000)
-	cfg.SetDefault("analyzer.bandwidth_absolute_warning", 100)
-	cfg.SetDefault("analyzer.bandwidth_relative_active", 0.1)
-	cfg.SetDefault("analyzer.bandwidth_relative_alert", 0.8)
-	cfg.SetDefault("analyzer.bandwidth_relative_warning", 0.5)
-	cfg.SetDefault("analyzer.bandwidth_source", "netlink")
-	cfg.SetDefault("analyzer.bandwidth_threshold", "relative")
-	cfg.SetDefault("analyzer.bandwidth_update_rate", 5)
 	cfg.SetDefault("analyzer.flowtable_expire", 600)
 	cfg.SetDefault("analyzer.flowtable_update", 60)
 	cfg.SetDefault("analyzer.listen", "127.0.0.1:8082")
+	cfg.SetDefault("analyzer.replication.debug", false)
+	cfg.SetDefault("analyzer.ssh_enabled", false)
 	cfg.SetDefault("analyzer.storage.bulk_insert", 100)
 	cfg.SetDefault("analyzer.storage.bulk_insert_deadline", 5)
 	cfg.SetDefault("analyzer.topology.probes", []string{})
-	cfg.SetDefault("analyzer.ssh_enabled", false)
-	cfg.SetDefault("analyzer.replication.debug", false)
 
 	cfg.SetDefault("auth.type", "noauth")
 	cfg.SetDefault("auth.keystone.tenant", "admin")
@@ -91,18 +96,35 @@ func init() {
 
 	cfg.SetDefault("etcd.data_dir", "/var/lib/skydive/etcd")
 	cfg.SetDefault("etcd.embedded", true)
-	cfg.SetDefault("etcd.listen", "0.0.0.0:12379")
+	cfg.SetDefault("etcd.name", host)
+	cfg.SetDefault("etcd.listen", "127.0.0.1:12379")
 
 	cfg.SetDefault("flow.expire", 600)
 	cfg.SetDefault("flow.update", 60)
 	cfg.SetDefault("flow.protocol", "udp")
 
 	cfg.SetDefault("graph.backend", "memory")
-	cfg.SetDefault("graph.gremlin", "ws://127.0.0.1:8182")
+
+	cfg.SetDefault("http.rest.debug", false)
+	cfg.SetDefault("http.ws.ping_delay", 2)
+	cfg.SetDefault("http.ws.pong_timeout", 5)
+	cfg.SetDefault("http.ws.bulk_maxmsgs", 100)
+	cfg.SetDefault("http.ws.bulk_maxdelay", 1)
+	cfg.SetDefault("http.ws.queue_size", 10000)
+	cfg.SetDefault("http.ws.enable_write_compression", true)
 
 	cfg.SetDefault("host_id", host)
 
-	cfg.SetDefault("k8s.probes", []string{"networkpolicy", "pod", "container", "node"})
+	cfg.SetDefault("http.rest.debug", false)
+	cfg.SetDefault("http.ws.ping_delay", 2)
+	cfg.SetDefault("http.ws.pong_timeout", 5)
+	cfg.SetDefault("http.ws.bulk_maxmsgs", 100)
+	cfg.SetDefault("http.ws.bulk_maxdelay", 1)
+	cfg.SetDefault("http.ws.queue_size", 10000)
+	cfg.SetDefault("http.ws.enable_write_compression", true)
+
+	cfg.SetDefault("k8s.config_file", "/etc/skydive/kubeconfig")
+	cfg.SetDefault("k8s.probes", []string{"networkpolicy", "pod", "container", "node", "namespace"})
 
 	cfg.SetDefault("logging.backends", []string{"stderr"})
 	cfg.SetDefault("logging.color", true)
@@ -114,13 +136,12 @@ func init() {
 	cfg.SetDefault("netns.run_path", "/var/run/netns")
 
 	cfg.SetDefault("opencontrail.mpls_udp_port", 51234)
-	cfg.SetDefault("openstack.endpoint_type", "public")
+
 	cfg.SetDefault("ovs.ovsdb", "unix:///var/run/openvswitch/db.sock")
 	cfg.SetDefault("ovs.oflow.enable", false)
+
 	cfg.SetDefault("sflow.port_min", 6345)
 	cfg.SetDefault("sflow.port_max", 6355)
-
-	cfg.SetDefault("k8s.config_file", "/etc/skydive/kubeconfig")
 
 	cfg.SetDefault("storage.elasticsearch.host", "127.0.0.1:9200")
 	cfg.SetDefault("storage.elasticsearch.maxconns", 10)
@@ -132,13 +153,15 @@ func init() {
 	cfg.SetDefault("storage.orientdb.username", "root")
 	cfg.SetDefault("storage.orientdb.password", "root")
 
-	cfg.SetDefault("http.rest.debug", false)
-	cfg.SetDefault("http.ws.ping_delay", 2)
-	cfg.SetDefault("http.ws.pong_timeout", 5)
-	cfg.SetDefault("http.ws.bulk_maxmsgs", 100)
-	cfg.SetDefault("http.ws.bulk_maxdelay", 1)
-	cfg.SetDefault("http.ws.queue_size", 10000)
-	cfg.SetDefault("http.ws.enable_write_compression", true)
+	cfg.SetDefault("ui.bandwidth_absolute_active", 1)
+	cfg.SetDefault("ui.bandwidth_absolute_alert", 1000)
+	cfg.SetDefault("ui.bandwidth_absolute_warning", 100)
+	cfg.SetDefault("ui.bandwidth_relative_active", 0.1)
+	cfg.SetDefault("ui.bandwidth_relative_alert", 0.8)
+	cfg.SetDefault("ui.bandwidth_relative_warning", 0.5)
+	cfg.SetDefault("ui.bandwidth_source", "netlink")
+	cfg.SetDefault("ui.bandwidth_threshold", "relative")
+	cfg.SetDefault("ui.bandwidth_update_rate", 5)
 
 	replacer := strings.NewReplacer(".", "_", "-", "_")
 	cfg.SetEnvPrefix("SKYDIVE")
@@ -253,7 +276,7 @@ func SetDefault(key string, value interface{}) {
 // GetAnalyzerServiceAddresses returns a list of connectable Analyzers
 func GetAnalyzerServiceAddresses() ([]common.ServiceAddress, error) {
 	var addresses []common.ServiceAddress
-	for _, a := range GetConfig().GetStringSlice("analyzers") {
+	for _, a := range GetStringSlice("analyzers") {
 		sa, err := common.ServiceAddressFromString(a)
 		if err != nil {
 			return nil, err
@@ -286,7 +309,7 @@ func GetOneAnalyzerServiceAddress() (common.ServiceAddress, error) {
 
 // GetEtcdServerAddrs returns the ETCD server address specified in the configuration file or embedded
 func GetEtcdServerAddrs() []string {
-	etcdServers := GetConfig().GetStringSlice("etcd.servers")
+	etcdServers := GetStringSlice("etcd.servers")
 	if len(etcdServers) > 0 {
 		return etcdServers
 	}
@@ -298,14 +321,70 @@ func GetEtcdServerAddrs() []string {
 
 // IsTLSenabled returns true is the analyzer certificates are set
 func IsTLSenabled() bool {
-	certPEM := GetConfig().GetString("analyzer.X509_cert")
-	keyPEM := GetConfig().GetString("analyzer.X509_key")
+	certPEM := GetString("analyzer.X509_cert")
+	keyPEM := GetString("analyzer.X509_key")
 	if len(certPEM) > 0 && len(keyPEM) > 0 {
 		return true
 	}
 	return false
 }
 
+func realKey(key string) string {
+	for {
+		if cfg.IsSet(key) {
+			return key
+		}
+		newKey, found := relocationMap[key]
+		if !found {
+			return key
+		}
+		fmt.Fprintf(os.Stderr, "Config value '%s' is now deprecated. Please use '%s' instead\n", key, newKey)
+		key = newKey
+	}
+}
+
+// Get returns a value of the configuration as in interface
+func Get(key string) interface{} {
+	return cfg.Get(realKey(key))
+}
+
+// Set a value of the configuration
+func Set(key string, value interface{}) {
+	cfg.Set(key, value)
+}
+
+// GetBool returns a boolean from the configuration
+func GetBool(key string) bool {
+	return cfg.GetBool(realKey(key))
+}
+
+// GetInt returns an interger from the configuration
+func GetInt(key string) int {
+	return cfg.GetInt(realKey(key))
+}
+
+// GetString returns a string from the configuration
+func GetString(key string) string {
+	return cfg.GetString(realKey(key))
+}
+
+// GetStringSlice returns a slice of strings from the configuration
+func GetStringSlice(key string) []string {
+	return cfg.GetStringSlice(realKey(key))
+}
+
+// GetStringMapString returns a map of strings from the configuration
+func GetStringMapString(key string) map[string]string {
+	return cfg.GetStringMapString(realKey(key))
+}
+
+// BindPFlag binds a command line flag to a configuration value
+func BindPFlag(key string, flag *pflag.Flag) error {
+	return cfg.BindPFlag(key, flag)
+}
+
+// GetURL constructs a URL from a tuple of protocol, address, port and path
+// If TLS is enabled, it will return the https (or wss) version of the URL.
 func GetURL(protocol string, addr string, port int, path string) *url.URL {
 	u, _ := url.Parse(fmt.Sprintf("%s://%s:%d%s", protocol, addr, port, path))
 

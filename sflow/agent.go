@@ -101,7 +101,7 @@ func (sfa *SFlowAgent) feedFlowTable(packetSeqChan chan *flow.PacketSequence) {
 			for _, sample := range sflowPacket.FlowSamples {
 				// iterate over a set of Packets as a sample contains multiple
 				// records each generating Packets.
-				for _, ps := range flow.PacketSeqFromSFlowSample(&sample, -1, bpf) {
+				for _, ps := range flow.PacketSeqFromSFlowSample(&sample, bpf) {
 					packetSeqChan <- ps
 				}
 			}
@@ -221,8 +221,8 @@ func (a *SFlowAgentAllocator) Alloc(uuid string, ft *flow.Table, bpfFilter strin
 
 // NewSFlowAgentAllocator creates a new sFlow agent allocator
 func NewSFlowAgentAllocator() (*SFlowAgentAllocator, error) {
-	min := config.GetConfig().GetInt("sflow.port_min")
-	max := config.GetConfig().GetInt("sflow.port_max")
+	min := config.GetInt("sflow.port_min")
+	max := config.GetInt("sflow.port_max")
 
 	portAllocator, err := common.NewPortAllocator(min, max)
 	if err != nil {

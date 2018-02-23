@@ -65,7 +65,7 @@ type Server struct {
 	probeBundle         *probe.ProbeBundle
 	storage             storage.Storage
 	embeddedEtcd        *etcd.EmbeddedEtcd
-	etcdClient          *etcd.EtcdClient
+	etcdClient          *etcd.Client
 	wgServers           sync.WaitGroup
 }
 
@@ -90,6 +90,7 @@ func (s *Server) GetStatus() interface{} {
 		Subscribers: s.subscriberWSServer.GetStatus(),
 		Alerts:      types.ElectionStatus{IsMaster: s.alertServer.IsMaster()},
 		Captures:    types.ElectionStatus{IsMaster: s.onDemandClient.IsMaster()},
+		Probes:      s.probeBundle.ActiveProbes(),
 	}
 }
 
@@ -155,7 +156,7 @@ func (s *Server) Stop() {
 
 // NewServerFromConfig creates a new empty server
 func NewServerFromConfig() (*Server, error) {
-	embedEtcd := config.GetConfig().GetBool("etcd.embedded")
+	embedEtcd := config.GetBool("etcd.embedded")
 
 	hserver, err := shttp.NewServerFromConfig(common.AnalyzerService)
 	if err != nil {
@@ -209,14 +210,14 @@ func NewServerFromConfig() (*Server, error) {
 		}
 	}
 
-	etcdClient, err := etcd.NewEtcdClientFromConfig()
+	etcdClient, err := etcd.NewClientFromConfig()
 	if err != nil {
 		return nil, err
 	}
 
 	// wait for etcd to be ready
 	for {
-		host := config.GetConfig().GetString("host_id")
+		host := config.GetString("host_id")
 		if err = etcdClient.SetInt64(fmt.Sprintf("/analyzer:%s/start-time", host), time.Now().Unix()); err != nil {
 			logging.GetLogger().Errorf("Etcd server not ready: %s", err.Error())
 			time.Sleep(time.Second)
@@ -304,7 +305,7 @@ func NewServerFromConfig() (*Server, error) {
 // NewAnalyzerAuthenticationOpts returns an object to authenticate to the analyzer
 func NewAnalyzerAuthenticationOpts() *shttp.AuthenticationOpts {
 	return &shttp.AuthenticationOpts{
-		Username: config.GetConfig().GetString("auth.analyzer_username"),
-		Password: config.GetConfig().GetString("auth.analyzer_password"),
+		Username: config.GetString("auth.analyzer_username"),
+		Password: config.GetString("auth.analyzer_password"),
 	}
 }

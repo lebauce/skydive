@@ -63,12 +63,12 @@ func NewStorage(backend string) (s Storage, err error) {
 		if err != nil {
 			logging.GetLogger().Fatalf("Can't connect to OrientDB server: %v", err)
 		}
-	case "":
+	case "memory", "":
 		logging.GetLogger().Infof("Using no storage")
 		return
 	default:
 		err = fmt.Errorf("Storage type unknown: %s", backend)
-		logging.GetLogger().Fatalf(err.Error())
+		logging.GetLogger().Critical(err.Error())
 		return
 	}
 
@@ -78,5 +78,5 @@ func NewStorage(backend string) (s Storage, err error) {
 
 // NewStorageFromConfig creates a new storage based configuration
 func NewStorageFromConfig() (s Storage, err error) {
-	return NewStorage(config.GetConfig().GetString("analyzer.storage.backend"))
+	return NewStorage(config.GetString("analyzer.storage.backend"))
 }

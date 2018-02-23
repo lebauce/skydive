@@ -94,7 +94,7 @@ func packetHandler(packets []*packet.Packet, next []bool, nbPackets uint, contex
 
 	for i := uint(0); i < nbPackets; i++ {
 		packet := gopacket.NewPacket(packets[i].GetRawPacketBytes(), layers.LayerTypeEthernet, gopacket.Default)
-		if ps := flow.PacketSeqFromGoPacket(&packet, 0, -1, nil); len(ps.Packets) > 0 {
+		if ps := flow.PacketSeqFromGoPacket(&packet, 0, nil); len(ps.Packets) > 0 {
 			ctx.packetSeqChan <- ps
 		}
 		next[i] = false
@@ -159,8 +159,8 @@ func getDPDKMacAddress(port int) string {
 
 // NewDPDKProbesHandler creates a new gopacket probe in the graph
 func NewDPDKProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*DPDKProbesHandler, error) {
-	ports := config.GetConfig().GetStringSlice("dpdk.ports")
-	nbWorkers := config.GetConfig().GetInt("dpdk.workers")
+	ports := config.GetStringSlice("dpdk.ports")
+	nbWorkers := config.GetInt("dpdk.workers")
 
 	nbPorts := len(ports)
 	if nbWorkers == 0 || nbPorts == 0 {
@@ -171,7 +171,7 @@ func NewDPDKProbesHandler(g *graph.Graph, fpta *FlowProbeTableAllocator) (*DPDKP
 	cfg := &dpdkflow.Config{
 		LogType: dpdkcommon.Initialization,
 	}
-	debug := config.GetConfig().GetInt("dpdk.debug")
+	debug := config.GetInt("dpdk.debug")
 	if debug > 0 {
 		cfg.LogType = dpdkcommon.Debug
 		cfg.DebugTime = uint(debug * 1000)

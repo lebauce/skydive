@@ -58,6 +58,7 @@ var (
 	etcdServer     string
 	graphBackend   string
 	storageBackend string
+	analyzerProbes string
 )
 
 type HelperParams map[string]interface{}
@@ -68,6 +69,7 @@ func init() {
 	flag.StringVar(&graphBackend, "graph.backend", "memory", "Specify the graph backend used")
 	flag.StringVar(&GraphOutputFormat, "graph.output", "", "Graph output format (json, dot or ascii)")
 	flag.StringVar(&storageBackend, "storage.backend", "", "Specify the storage backend used")
+	flag.StringVar(&analyzerProbes, "analyzer.topology.probes", "", "Specify the analyzer probes to enable")
 	flag.Parse()
 }
 
@@ -106,6 +108,9 @@ func InitConfig(conf string, params ...HelperParams) error {
 	if graphBackend != "" {
 		params[0]["GraphBackend"] = graphBackend
 	}
+	if analyzerProbes != "" {
+		params[0]["AnalyzerProbes"] = strings.Split(analyzerProbes, ",")
+	}
 
 	tmpl, err := template.New("config").Parse(conf)
 	if err != nil {
@@ -131,14 +136,15 @@ func ExecCmds(t *testing.T, cmds ...Cmd) error {
 	for _, cmd := range cmds {
 		args := strings.Split(cmd.Cmd, " ")
 		command := exec.Command(args[0], args[1:]...)
-		logging.GetLogger().Debugf("Executing command %s with args %+v", args[0], args[1:])
+		logging.GetLogger().Debugf("Executing command %+v", args)
 		stdouterr, err := command.CombinedOutput()
-		logging.GetLogger().Debugf("Command returned %s", stdouterr)
+		if stdouterr != nil {
+			logging.GetLogger().Debugf("Command returned %s", string(stdouterr))
+		}
 		if err != nil {
 			if cmd.Check {
 				t.Fatal("cmd : ("+cmd.Cmd+") returned ", err.Error(), string(stdouterr))
 			}
-			return err
 		}
 	}
 	return nil

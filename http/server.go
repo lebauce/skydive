@@ -123,9 +123,9 @@ func (s *Server) Listen() error {
 
 	if config.IsTLSenabled() == true {
 		socketType = "TLS"
-		certPEM := config.GetConfig().GetString("analyzer.X509_cert")
-		keyPEM := config.GetConfig().GetString("analyzer.X509_key")
-		agentCertPEM := config.GetConfig().GetString("agent.X509_cert")
+		certPEM := config.GetString("analyzer.X509_cert")
+		keyPEM := config.GetString("analyzer.X509_key")
+		agentCertPEM := config.GetString("agent.X509_cert")
 		tlsConfig := common.SetupTLSServerConfig(certPEM, keyPEM)
 		tlsConfig.ClientCAs = common.SetupTLSLoadCertificate(agentCertPEM)
 		s.listener = tls.NewListener(ln.(*net.TCPListener), tlsConfig)
@@ -306,6 +306,7 @@ func NewServer(host string, serviceType common.ServiceType, addr string, port in
 	router.PathPrefix("/statics").HandlerFunc(server.serveStatics)
 	router.PathPrefix(ExtraAssetPrefix).HandlerFunc(server.serveStatics)
 	router.HandleFunc("/login", server.serveLogin)
+	router.PathPrefix("/topology").HandlerFunc(server.serveIndex)
 	router.HandleFunc("/", server.serveIndex)
 
 	return server
@@ -317,13 +318,13 @@ func NewServerFromConfig(serviceType common.ServiceType) (*Server, error) {
 		return nil, err
 	}
 
-	sa, err := common.ServiceAddressFromString(config.GetConfig().GetString(serviceType.String() + ".listen"))
+	sa, err := common.ServiceAddressFromString(config.GetString(serviceType.String() + ".listen"))
 	if err != nil {
 		return nil, errors.New("Configuration error: " + err.Error())
 	}
 
-	host := config.GetConfig().GetString("host_id")
-	assets := config.GetConfig().GetString("ui.extra_assets")
+	host := config.GetString("host_id")
+	assets := config.GetString("ui.extra_assets")
 
 	return NewServer(host, serviceType, sa.Addr, sa.Port, auth, assets), nil
 }

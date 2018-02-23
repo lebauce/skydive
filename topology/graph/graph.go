@@ -221,6 +221,9 @@ func (g *GraphEventHandler) notifyEvent(ge graphEvent) {
 
 		// notify only once per listener as if more than once we are in a recursion
 		// and we wont to notify a listener which generated a graph element
+		g.RLock()
+		defer g.RUnlock()
+
 		for _, g.currentEventListener = range g.eventListeners {
 			// do not notify the listener which generated the event
 			if g.currentEventListener == ge.listener {
@@ -1001,11 +1004,11 @@ func (g *Graph) AreLinked(n1 *Node, n2 *Node, m GraphElementMatcher) bool {
 }
 
 // Link the nodes n1, n2 with a new edge
-func (g *Graph) Link(n1 *Node, n2 *Node, m Metadata) *Edge {
+func (g *Graph) Link(n1 *Node, n2 *Node, m Metadata, h ...string) *Edge {
 	if len(m) > 0 {
-		return g.NewEdge(GenID(), n1, n2, m)
+		return g.NewEdge(GenID(), n1, n2, m, h...)
 	}
-	return g.NewEdge(GenID(), n1, n2, nil)
+	return g.NewEdge(GenID(), n1, n2, nil, h...)
 }
 
 // Unlink the nodes n1, n2 ; delete the associated edge
@@ -1021,6 +1024,16 @@ func (g *Graph) Unlink(n1 *Node, n2 *Node) {
 			g.DelEdge(e)
 		}
 	}
+}
+
+// GetFirstLink get Link between the parent and the child node or nil
+func (g *Graph) GetFirstLink(parent, child *Node, metadata Metadata) *Edge {
+	for _, e := range g.GetNodeEdges(child, metadata) {
+		if e.GetChild() == child.ID {
+			return e
+		}
+	}
+	return nil
 }
 
 // LookupFirstNode returns the fist node matching metadata
@@ -1163,8 +1176,8 @@ func (g *Graph) newEdge(i Identifier, p *Node, c *Node, m Metadata, t time.Time,
 }
 
 // NewEdge creates a new edge in the graph based on Identifier, parent, child nodes and metadata
-func (g *Graph) NewEdge(i Identifier, p *Node, c *Node, m Metadata) *Edge {
-	return g.newEdge(i, p, c, m, time.Now().UTC())
+func (g *Graph) NewEdge(i Identifier, p *Node, c *Node, m Metadata, h ...string) *Edge {
+	return g.newEdge(i, p, c, m, time.Now().UTC(), h...)
 }
 
 // EdgeDeleted event
@@ -1321,7 +1334,7 @@ func NewGraph(host string, backend GraphBackend) *Graph {
 
 // NewGraphFromConfig creates a new graph based on configuration
 func NewGraphFromConfig(backend GraphBackend) *Graph {
-	host := config.GetConfig().GetString("host_id")
+	host := config.GetString("host_id")
 	return NewGraph(host, backend)
 }
 
@@ -1334,7 +1347,7 @@ func NewGraphWithContext(hostID string, backend GraphBackend, context GraphConte
 // BackendFromConfig creates a new graph backend based on configuration
 // memory, orientdb, elasticsearch backend are supported
 func BackendFromConfig() (backend GraphBackend, err error) {
-	name := config.GetConfig().GetString("graph.backend")
+	name := config.GetString("graph.backend")
 	if len(name) == 0 {
 		name = "memory"
 	}

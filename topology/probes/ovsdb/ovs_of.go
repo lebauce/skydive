@@ -24,6 +24,7 @@ package ovsdb
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -32,8 +33,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"golang.org/x/net/context"
 
 	uuid "github.com/nu7hatch/gouuid"
 	"github.com/skydive-project/skydive/config"
@@ -557,15 +556,15 @@ func (o *OvsOfProbe) OnOvsBridgeDel(uuid string, bridgeNode *graph.Node) {
 
 // NewOvsOfProbe creates a new probe associated to a given graph, root node and host.
 func NewOvsOfProbe(g *graph.Graph, root *graph.Node, host string) *OvsOfProbe {
-	enable := config.GetConfig().GetBool("ovs.oflow.enable")
+	enable := config.GetBool("ovs.oflow.enable")
 	if !enable {
 		return nil
 	}
 	logging.GetLogger().Infof("Adding OVS probe on %s", host)
-	translate := config.GetConfig().GetStringMapString("ovs.oflow.address")
-	cert := config.GetConfig().GetString("ovs.oflow.cert")
-	pk := config.GetConfig().GetString("ovs.oflow.key")
-	ca := config.GetConfig().GetString("ovs.oflow.ca")
+	translate := config.GetStringMapString("ovs.oflow.address")
+	cert := config.GetString("ovs.oflow.cert")
+	pk := config.GetString("ovs.oflow.key")
+	ca := config.GetString("ovs.oflow.ca")
 	sslOk := (pk != "") && (ca != "") && (cert != "")
 	o := &OvsOfProbe{
 		Host:         host,

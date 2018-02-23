@@ -40,7 +40,7 @@ import (
 var clientset *kubernetes.Clientset = nil
 
 func newClientset() (*kubernetes.Clientset, error) {
-	kubeconfig := config.GetConfig().GetString("k8s.config_file")
+	kubeconfig := config.GetString("k8s.config_file")
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
 		loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
@@ -78,6 +78,35 @@ type kubeCache struct {
 	cache          cache.Store
 	controller     cache.Controller
 	stopController chan (struct{})
+}
+
+func (c *kubeCache) list() []interface{} {
+	return c.cache.List()
+}
+
+func (c *kubeCache) listByNamespace(namespace string) (objList []interface{}) {
+	if namespace == api.NamespaceAll {
+		return c.list()
+	}
+	for _, obj := range c.list() {
+		ns := obj.(*api.Pod).GetNamespace()
+		if len(ns) == 0 || ns == namespace {
+			objList = append(objList, obj)
+		}
+	}
+	return
+}
+
+func (c *kubeCache) getByKey(namespace, name string) interface{} {
+	key := ""
+	if len(namespace) > 0 {
+		key += namespace + "/"
+	}
+	key += name
+	if obj, found, _ := c.cache.GetByKey(key); found {
+		return obj
+	}
+	return nil
 }
 
 type defaultKubeCacheEventHandler struct {

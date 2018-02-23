@@ -50,6 +50,13 @@ spec:
           value: elasticsearch
         - name: SKYDIVE_ETCD_LISTEN
           value: 0.0.0.0:12379
+        livenessProbe:
+          httpGet:
+            port: 8082
+            path: /api/status
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          failureThreshold: 3
       - name: skydive-elasticsearch
         image: elasticsearch:2
         ports:

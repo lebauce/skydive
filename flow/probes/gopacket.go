@@ -121,7 +121,7 @@ func (p *GoPacketProbe) feedFlowTable(packetSeqChan chan *flow.PacketSequence, b
 		packet, err := p.packetSource.NextPacket()
 		switch err {
 		case nil:
-			if ps := flow.PacketSeqFromGoPacket(&packet, 0, -1, bpf); len(ps.Packets) > 0 {
+			if ps := flow.PacketSeqFromGoPacket(&packet, 0, bpf); len(ps.Packets) > 0 {
 				packetSeqChan <- ps
 			}
 		case io.EOF:
@@ -184,7 +184,7 @@ func (p *GoPacketProbe) run(g *graph.Graph, n *graph.Node, capture *types.Captur
 	statsDone := make(chan bool)
 
 	// Go routine to update the interface statistics
-	statsUpdate := config.GetConfig().GetInt("agent.flow.stats_update")
+	statsUpdate := config.GetInt("agent.flow.stats_update")
 	statsTicker := time.NewTicker(time.Duration(statsUpdate) * time.Second)
 
 	switch capture.Type {

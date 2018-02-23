@@ -23,6 +23,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -30,7 +31,6 @@ import (
 
 	"github.com/abbot/go-http-auth"
 	etcd "github.com/coreos/etcd/client"
-	"golang.org/x/net/context"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
@@ -189,7 +189,7 @@ func (a *Server) RegisterAPIHandler(handler Handler) error {
 
 func (a *Server) addAPIRootRoute() {
 	info := Info{
-		Host:    config.GetConfig().GetString("host_id"),
+		Host:    config.GetString("host_id"),
 		Version: version.Version,
 		Service: string(a.ServiceType),
 	}

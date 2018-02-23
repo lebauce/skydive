@@ -29,23 +29,13 @@ import (
 	"github.com/skydive-project/skydive/topology/graph"
 )
 
-const (
-	podToContainerLink = "pod2container"
-	policyToPodLink    = "policy2pod"
-)
-
-var (
-	podToContainerMetadata = graph.Metadata{"RelationType": podToContainerLink}
-	policyToPodMetadata    = graph.Metadata{"RelationType": policyToPodLink}
-)
-
 // Probe for tracking k8s events
 type Probe struct {
 	bundle *probe.ProbeBundle
 }
 
 func makeProbeBundle(g *graph.Graph) *probe.ProbeBundle {
-	configProbes := config.GetConfig().GetStringSlice("k8s.probes")
+	configProbes := config.GetStringSlice("k8s.probes")
 	logging.GetLogger().Infof("K8s probes: %v", configProbes)
 	probes := make(map[string]probe.Probe)
 	for name, i := range configProbes {
@@ -58,6 +48,8 @@ func makeProbeBundle(g *graph.Graph) *probe.ProbeBundle {
 			probes[i] = newContainerProbe(g)
 		case "node":
 			probes[i] = newNodeProbe(g)
+		case "namespace":
+			probes[i] = newNamespaceProbe(g)
 		default:
 			logging.GetLogger().Errorf("skipping unsupported K8s probe %v", name)
 		}
