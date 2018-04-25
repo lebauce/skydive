@@ -82,11 +82,14 @@ var Capture = {
     },
 
     remove: function(capture) {
-      var self = this,
-          uuid = capture.UUID;
+      var self = this;
       this.deleting = true;
-      this.$captureDelete(uuid)
-        .always(function() {
+      this.captureAPI.delete(capture.UUID)
+        .catch(function (e) {
+          self.$error({message: 'Capture delete error: ' + e.responseText});
+          return e;
+        })
+        .finally(function() {
           self.deleting = false;
         });
     },
@@ -181,9 +184,17 @@ Vue.component('capture-list', {
 
     init: function() {
       var self = this;
-      this.$captureList()
+      self.captureAPI.list()
         .then(function(data) {
           self.captures = data;
+        })
+        .catch(function (e) {
+          console.log("Error while listing captures: " + e);
+          if (e.status === 405) { // not allowed
+            return $.Deferred().promise([]);
+          }
+          self.$error({message: 'Capture list error: ' + e.responseText});
+          return e;
         });
     },
 
@@ -197,9 +208,13 @@ Vue.component('capture-list', {
           Vue.set(this.captures, msg.Obj.UUID, msg.Obj);
           break;
         case "CaptureNodeUpdated":
-          this.$captureGet(msg.Obj)
+          this.captureAPI.get(msg.Obj)
             .then(function(data) {
               Vue.set(self.captures, data.UUID, data);
+            })
+            .catch(function (e) {
+              self.$error({message: 'Capture get error: ' + e.responseText});
+              return e;
             });
       }
     }

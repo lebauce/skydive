@@ -27,7 +27,7 @@ var LinkLabelBandwidth = Vue.extend({
         return 0;
       }
 
-      return Math.floor(8 * totalByte * 1000 / deltaMillis); // bits-per-second 
+      return Math.floor(8 * totalByte * 1000 / deltaMillis); // bits-per-second
     },
 
     setup: function(topology) {
@@ -52,7 +52,7 @@ var LinkLabelBandwidth = Vue.extend({
       link.bandwidthAbsolute = this.bandwidthFromMetrics(metadata.LastUpdateMetric);
       link.bandwidth = link.bandwidthAbsolute / link.bandwidthBaseline;
     },
- 
+
     hasData: function(link) {
       if (!link.target.metadata.LastUpdateMetric && !link.source.metadata.LastUpdateMetric) {
         return false;
@@ -151,7 +151,7 @@ var LinkLabelLatency = Vue.extend({
       let map = {};
       for (let i in flows) {
         const flow = flows[i];
-        map[flow.TrackingID] = flow; 
+        map[flow.TrackingID] = flow;
       }
       return map;
     },
@@ -187,11 +187,11 @@ var LinkLabelLatency = Vue.extend({
               const aFlow = aFlowMap[bFlow.TrackingID];
               self.updateLatency(link, aFlow, bFlow);
             })
-            .fail(function(error) {
+            .catch(function(error) {
               console.log(error);
             });
         })
-        .fail(function(error) {
+        .catch(function(error) {
           console.log(error);
         });
     },

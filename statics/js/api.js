@@ -1,7 +1,12 @@
 var apiMixin = {
 
-  methods: {
+  created: function() {
+    this.captureAPI = new api.API("capture", api.Capture);
+    this.injectAPI = new api.API("injectpacket", api.PacketInjection);
+    this.gremlinAPI = new api.GremlinAPI();
+  },
 
+  methods: {
     // see : https://stackoverflow.com/questions/16086162/handle-file-download-from-ajax-post
     $downloadRawPackets: function(UUID, datastore){
       var self = this;
@@ -62,97 +67,7 @@ var apiMixin = {
     },
 
     $topologyQuery: function(gremlinQuery, cntx) {
-      return $.ajax({
-        dataType: "json",
-        url: '/api/topology',
-        data: JSON.stringify({"GremlinQuery": gremlinQuery}),
-        contentType: "application/json; charset=utf-8",
-        method: 'POST',
-        context: cntx,
-      })
-      .then(function(data) {
-        if (data === null)
-          return [];
-        // Result can be [Node] or [[Node, Node]]
-        if (data.length > 0 && data[0] instanceof Array)
-          data = data[0];
-        return data;
-      });
-    },
-
-    $captureList: function() {
-      var self = this;
-      return $.ajax({
-        dataType: "json",
-        url: '/api/capture',
-        contentType: "application/json; charset=utf-8",
-        method: 'GET',
-      })
-      .fail(function(e) {
-        if (e.status === 405) { // not allowed
-          return $.Deferred().promise([]);
-        }
-        self.$error({message: 'Capture list error: ' + e.responseText});
-        return e;
-      });
-    },
-
-    $captureGet: function(id) {
-      var self = this;
-      return $.ajax({
-        dataType: "json",
-        url: '/api/capture/' + id,
-        contentType: "application/json; charset=utf-8",
-        method: 'GET',
-      })
-      .fail(function(e) {
-        self.$error({message: 'Capture get error: ' + e.responseText});
-        return e;
-      });
-    },
-
-    $captureCreate: function(query, name, description, bpf, headerSize, rawPackets,
-      extraTCPMetric, ipDefrag, reassambleTCP, type, port) {
-      var self = this;
-      return $.ajax({
-        dataType: "json",
-        url: '/api/capture',
-        data: JSON.stringify({GremlinQuery: query,
-                              Name: name || null,
-                              Description: description || null,
-                              BPFFilter: bpf || null,
-                              HeaderSize: headerSize || 0,
-                              RawPacketLimit: rawPackets || 0,
-                              ExtraTCPMetric: extraTCPMetric,
-                              IPDefrag: ipDefrag,
-                              ReassembleTCP: reassambleTCP,
-                              Type: type || null,
-                              Port: port,
-                             }),
-        contentType: "application/json; charset=utf-8",
-        method: 'POST',
-      })
-      .then(function(data) {
-        self.$success({message: 'Capture created'});
-        return data;
-      })
-      .fail(function(e) {
-        self.$error({message: 'Capture create error: ' + e.responseText});
-        return e;
-      });
-    },
-
-    $captureDelete: function(uuid) {
-      var self = this;
-      return $.ajax({
-        dataType: 'text',
-        url: '/api/capture/' + uuid + '/',
-        method: 'DELETE',
-      })
-      .fail(function(e) {
-        self.$error({message: 'Capture delete error: ' + e.responseText});
-        return e;
-      });
+      return this.gremlinAPI.query(gremlinQuery);
     },
 
     $getConfigValue: function(key) {
@@ -161,33 +76,6 @@ var apiMixin = {
         url: "/api/config/" + key,
         contentType: "application/json; charset=utf-8",
         method: 'GET',
-      });
-    },
-
-    $injectorList: function() {
-      var self = this;
-      return $.ajax({
-        dataType: "json",
-        url: '/api/injectpacket',
-        contentType: "application/json; charset=utf-8",
-        method: 'GET',
-      })
-      .fail(function(e) {
-        self.$error({message: 'Packet injector list error: ' + e.responseText});
-        return e;
-      });
-    },
-
-    $injectorDelete: function(uuid) {
-      var self = this;
-      return $.ajax({
-        dataType: 'text',
-        url: '/api/injectpacket/' + uuid + '/',
-        method: 'DELETE',
-      })
-      .fail(function(e) {
-        self.$error({message: 'Packet injector delete error: ' + e.responseText});
-        return e;
       });
     },
 
