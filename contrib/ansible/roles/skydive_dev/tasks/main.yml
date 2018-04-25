@@ -38,6 +38,7 @@
      - jq
      - aria2
      - tcpdump
+     - npm
 
 - service:
     name: "{{ item }}"
