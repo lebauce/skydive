@@ -149,8 +149,16 @@ BINDATA_DIRS := \
 	statics/js/components/* \
 	${EXTRABINDATA}
 
+.PHONY: npm.install
+npm.install:
+	cd js && npm install
+
+.PHONY: typescript
+typescript: npm.install
+	cd js && PATH=`npm bin`:$$PATH make all
+
 .PHONY: .bindata
-.bindata: builddep ebpf.build
+.bindata: builddep ebpf.build typescript
 	$(call VENDOR_RUN,${GO_BINDATA_GITHUB}) go-bindata ${GO_BINDATA_FLAGS} -nometadata -o statics/bindata.go -pkg=statics -ignore=bindata.go $(BINDATA_DIRS)
 	gofmt -w -s statics/bindata.go
 

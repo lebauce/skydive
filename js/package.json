@@ -1,0 +1,25 @@
+{
+  "name": "skydive-api",
+  "version": "0.0.1",
+  "description": "Skydive API",
+  "main": "api.js",
+  "dependencies": {
+    "browser-or-node": "1.0.2",
+    "browserify": "16.2.0",
+    "najax": "1.0.3",
+    "typescript": "^2.7.1"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Sylvain Baubeau",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/skydive-project/skydive.git"
+  },
+  "bugs": {
+    "url": "https://github.com/skydive-project/skydive/issues"
+  },
+  "homepage": "https://github.com/skydive-project/skydive#readme"
+}
