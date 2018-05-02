@@ -142,6 +142,7 @@ debug.analyzer:
 	gofmt -s -w flow/flow.pb.go
 
 BINDATA_DIRS := \
+	js/*.js \
 	statics/* \
 	statics/css/images/* \
 	statics/css/themes/*/* \

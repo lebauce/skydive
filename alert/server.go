@@ -33,12 +33,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/robertkrimen/otto"
 	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/api/types"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/etcd"
 	shttp "github.com/skydive-project/skydive/http"
+	"github.com/skydive-project/skydive/js"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
 	"github.com/skydive-project/skydive/topology/graph/traversal"
@@ -64,7 +64,7 @@ type GremlinAlert struct {
 	gremlinParser     *traversal.GremlinTraversalParser
 }
 
-func (ga *GremlinAlert) Evaluate(lockGraph bool) (interface{}, error) {
+func (ga *GremlinAlert) Evaluate(server *api.Server, lockGraph bool) (interface{}, error) {
 	// If the alert is a simple Gremlin query, avoid
 	// converting to JavaScript
 	if ga.traversalSequence != nil {
@@ -82,45 +82,11 @@ func (ga *GremlinAlert) Evaluate(lockGraph bool) (interface{}, error) {
 	}
 
 	// Fallback to JavaScript
-	vm := otto.New()
-	vm.Set("Gremlin", func(call otto.FunctionCall) otto.Value {
-		if len(call.ArgumentList) < 1 || !call.Argument(0).IsString() {
-			return vm.MakeCustomError("MissingQueryArgument", "Gremlin requires a string parameter")
-		}
+	vm := js.NewJSRE()
+	vm.Start()
+	vm.RegisterAPIServer(ga.graph, ga.gremlinParser, server)
 
-		query := call.Argument(0).String()
-
-		// TODO(sbaubeau) Cache the queries
-		ts, err := ga.gremlinParser.Parse(strings.NewReader(query))
-		if err != nil {
-			return vm.MakeCustomError("ParseError", err.Error())
-		}
-
-		result, err := ts.Exec(ga.graph, lockGraph)
-		if err != nil {
-			return vm.MakeCustomError("ExecuteError", err.Error())
-		}
-
-		source, err := result.MarshalJSON()
-		if err != nil {
-			return vm.MakeCustomError("MarshalError", err.Error())
-		}
-
-		jsonObj, err := vm.Object("obj = " + string(source))
-		if err != nil {
-			return vm.MakeCustomError("JSONError", err.Error())
-		}
-
-		logging.GetLogger().Infof("Gremlin returned %+v", jsonObj)
-		r, _ := vm.ToValue(jsonObj)
-		return r
-	})
-
-	// Create an alias '$' for 'Gremlin'
-	gremlin, _ := vm.Get("Gremlin")
-	vm.Set("$", gremlin)
-
-	result, err := vm.Run(ga.Expression)
+	result, err := vm.Exec(ga.Expression)
 	if err != nil {
 		return nil, fmt.Errorf("Error while executing Javascript '%s': %s", ga.Expression, err.Error())
 	}
@@ -228,6 +194,7 @@ type AlertServer struct {
 	Graph         *graph.Graph
 	Pool          shttp.WSStructSpeakerPool
 	AlertHandler  api.Handler
+	apiServer     *api.Server
 	watcher       api.StoppableWatcher
 	graphAlerts   map[string]*GremlinAlert
 	alertTimers   map[string]chan bool
@@ -272,7 +239,7 @@ func (a *AlertServer) evaluateAlert(al *GremlinAlert, lockGraph bool) error {
 		return nil
 	}
 
-	data, err := al.Evaluate(lockGraph)
+	data, err := al.Evaluate(a.apiServer, lockGraph)
 	if err != nil {
 		return err
 	}
@@ -422,17 +389,18 @@ func (a *AlertServer) Stop() {
 	a.MasterElector.Stop()
 }
 
-func NewAlertServer(ah api.Handler, pool shttp.WSStructSpeakerPool, graph *graph.Graph, parser *traversal.GremlinTraversalParser, etcdClient *etcd.Client) *AlertServer {
+func NewAlertServer(apiServer *api.Server, pool shttp.WSStructSpeakerPool, graph *graph.Graph, parser *traversal.GremlinTraversalParser, etcdClient *etcd.Client) *AlertServer {
 	elector := etcd.NewMasterElectorFromConfig(common.AnalyzerService, "alert-server", etcdClient)
 
 	as := &AlertServer{
 		MasterElector: elector,
 		Pool:          pool,
-		AlertHandler:  ah,
+		AlertHandler:  apiServer.GetHandler("alert"),
 		Graph:         graph,
 		graphAlerts:   make(map[string]*GremlinAlert),
 		alertTimers:   make(map[string]chan bool),
 		gremlinParser: parser,
+		apiServer:     apiServer,
 	}
 
 	return as
