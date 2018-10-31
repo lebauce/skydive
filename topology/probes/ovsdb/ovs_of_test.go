@@ -151,16 +151,18 @@ func (r ExecuteForTest) Wait() error {
 }
 
 func TestMakeCommand(t *testing.T) {
-	probe := &OvsOfProbe{
-		Host:         "host",
-		Graph:        nil,
-		Root:         nil,
-		BridgeProbes: make(map[string]*BridgeOfProbe),
-		Translation:  make(map[string]string),
-		Certificate:  "",
-		PrivateKey:   "",
-		CA:           "",
-		sslOk:        false,
+	probe := &OfctlProbe{
+		OvsOfProbe: &OvsOfProbe{
+			Host:           "host",
+			Graph:          nil,
+			Root:           nil,
+			bridgeOfProbes: make(map[string]*bridgeOfProbe),
+			Translation:    make(map[string]string),
+			Certificate:    "",
+			PrivateKey:     "",
+			CA:             "",
+			sslOk:          false,
+		},
 	}
 	com := []string{"c1", "c2"}
 	br := "br"
@@ -175,10 +177,10 @@ func TestMakeCommand(t *testing.T) {
 	if err == nil {
 		t.Error("ssl case: should fail")
 	}
-	probe.Certificate = "/cert"
-	probe.PrivateKey = "/pk"
-	probe.CA = "/ca"
-	probe.sslOk = true
+	probe.OvsOfProbe.Certificate = "/cert"
+	probe.OvsOfProbe.PrivateKey = "/pk"
+	probe.OvsOfProbe.CA = "/ca"
+	probe.OvsOfProbe.sslOk = true
 	r, err = probe.makeCommand(com, ssl, arg1, arg2)
 	expected = []string{"c1", "c2", "ssl://sw:8000", "--certificate", "/cert", "--ca-cert", "/ca", "--private-key", "/pk", "a1", "a2"}
 	if err != nil || !reflect.DeepEqual(r, expected) {
@@ -188,16 +190,18 @@ func TestMakeCommand(t *testing.T) {
 func TestCompleteRule(t *testing.T) {
 	old := executor
 	defer func() { executor = old }()
-	probe := &OvsOfProbe{
-		Host:         "host",
-		Graph:        nil,
-		Root:         nil,
-		BridgeProbes: make(map[string]*BridgeOfProbe),
-		Translation:  make(map[string]string),
-		Certificate:  "",
-		PrivateKey:   "",
-		CA:           "",
-		sslOk:        false,
+	probe := &OfctlProbe{
+		OvsOfProbe: &OvsOfProbe{
+			Host:           "host",
+			Graph:          nil,
+			Root:           nil,
+			bridgeOfProbes: make(map[string]*bridgeOfProbe),
+			Translation:    make(map[string]string),
+			Certificate:    "",
+			PrivateKey:     "",
+			CA:             "",
+			sslOk:          false,
+		},
 	}
 	executor = ExecuteForTest{Results: []string{"NXST_FLOW reply (xid=0x4):\n cookie=0x20, duration=57227.249s, table=21, n_packets=0, n_bytes=0, idle_age=57227, priority=1,dl_src=01:00:00:00:00:00/01:00:00:00:00:00 actions=drop"}}
 	var line = " event=ADDED table=21 cookie=32 dl_src=01:00:00:00:00:00/01:00:00:00:00:00\n"
@@ -206,7 +210,7 @@ func TestCompleteRule(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	err := completeEvent(ctx, probe, &event, "host-br-")
+	err := probe.completeEvent(ctx, probe.OvsOfProbe, &event, "host-br-")
 	if err != nil {
 		t.Error("completeRule: Should not err")
 	}
