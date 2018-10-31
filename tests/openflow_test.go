@@ -244,3 +244,23 @@ func TestDelOFGroup(t *testing.T) {
 
 	RunTest(t, test)
 }
+
+func TestOVSMonitor(t *testing.T) {
+	test := &Test{
+		setupCmds: []Cmd{
+			{Cmd: "ovs-vsctl add-br br-monitor"},
+			{Cmd: "ovs-vsctl set-controller br-monitor ptcp:6633"},
+		},
+		tearDownCmds: []Cmd{
+			{Cmd: "ovs-vsctl del-br br-monitor"},
+		},
+		setupFunction: func(c *TestContext) error {
+		},
+		checks: []CheckFunction{func(c *CheckContext) error {
+			return nil
+		}},
+	}
+
+	RunTest(t, test)
+
+}
