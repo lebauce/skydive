@@ -44,6 +44,6 @@ func (h *replicaSetHandler) Map(obj interface{}) (graph.Identifier, graph.Metada
 	return graph.Identifier(rs.GetUID()), NewMetadata(Manager, "replicaset", rs, rs.Name, rs.Namespace)
 }
 
-func newReplicaSetProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
+func newReplicaSetProbe(clientset *kubernetes.Clientset, g *graph.Graph, subprobes map[string]Subprobe) Subprobe {
 	return NewResourceCache(clientset.ExtensionsV1beta1().RESTClient(), &v1beta1.ReplicaSet{}, "replicasets", g, &replicaSetHandler{})
 }

@@ -51,7 +51,7 @@ func (h *ingressHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata)
 	return graph.Identifier(ingress.GetUID()), m
 }
 
-func newIngressProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
+func newIngressProbe(clientset *kubernetes.Clientset, g *graph.Graph, subprobes map[string]Subprobe) Subprobe {
 	return NewResourceCache(clientset.ExtensionsV1beta1().RESTClient(), &v1beta1.Ingress{}, "ingresses", g, &ingressHandler{})
 }
 

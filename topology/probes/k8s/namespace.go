@@ -54,7 +54,7 @@ func (h *namespaceHandler) Map(obj interface{}) (graph.Identifier, graph.Metadat
 	return graph.Identifier(ns.GetUID()), m
 }
 
-func newNamespaceProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
+func newNamespaceProbe(clientset *kubernetes.Clientset, g *graph.Graph, subprobes map[string]Subprobe) Subprobe {
 	return NewResourceCache(clientset.Core().RESTClient(), &v1.Namespace{}, "namespaces", g, &namespaceHandler{}, namespaceEventHandler)
 }
 

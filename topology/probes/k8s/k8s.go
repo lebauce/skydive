@@ -26,7 +26,6 @@ import (
 	"fmt"
 
 	"github.com/skydive-project/skydive/config"
-	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/probe"
 	"github.com/skydive-project/skydive/topology/graph"
 
@@ -35,7 +34,11 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-type resourceHandler func(clientset *kubernetes.Clientset, graph *graph.Graph) Subprobe
+type resourceHandler struct {
+	name        string
+	constructor func(*kubernetes.Clientset, *graph.Graph, map[string]Subprobe) Subprobe
+}
+
 type linkHandler func(g *graph.Graph, subprobes map[string]Subprobe) probe.Probe
 
 // NewConfig returns a new Kubernetes configuration object
@@ -58,7 +61,7 @@ func NewConfig(kubeConfig string) (*rest.Config, error) {
 // NewK8sProbe returns a new Kubernetes probe
 func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 	configFile := config.GetString("analyzer.topology.k8s.config_file")
-	enabledSubprobes := config.GetStringSlice("analyzer.topology.k8s.probes")
+	configSubprobes := config.GetStringSlice("analyzer.topology.k8s.probes")
 
 	config, err := NewConfig(configFile)
 	if err != nil {
@@ -70,40 +73,38 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 		return nil, fmt.Errorf("Failed to create Kubernetes client: %s", err.Error())
 	}
 
-	resourceHandlers := map[string]resourceHandler{
-		"cluster":               newClusterProbe,
-		"container":             newContainerProbe,
-		"cronjob":               newCronJobProbe,
-		"daemonset":             newDaemonSetProbe,
-		"deployment":            newDeploymentProbe,
-		"endpoints":             newEndpointsProbe,
-		"ingress":               newIngressProbe,
-		"job":                   newJobProbe,
-		"namespace":             newNamespaceProbe,
-		"networkpolicy":         newNetworkPolicyProbe,
-		"node":                  newNodeProbe,
-		"persistentvolume":      newPersistentVolumeProbe,
-		"persistentvolumeclaim": newPersistentVolumeClaimProbe,
-		"pod":                   newPodProbe,
-		"replicaset":            newReplicaSetProbe,
-		"replicationcontroller": newReplicationControllerProbe,
-		"service":               newServiceProbe,
-		"statefulset":           newStatefulSetProbe,
-		"storageclass":          newStorageClassProbe,
-	}
-
-	if len(enabledSubprobes) == 0 {
-		for name := range resourceHandlers {
-			enabledSubprobes = append(enabledSubprobes, name)
-		}
+	resourceHandlers := []resourceHandler{
+		{"cluster", newClusterProbe},
+		{"cronjob", newCronJobProbe},
+		{"daemonset", newDaemonSetProbe},
+		{"deployment", newDeploymentProbe},
+		{"endpoints", newEndpointsProbe},
+		{"ingress", newIngressProbe},
+		{"job", newJobProbe},
+		{"namespace", newNamespaceProbe},
+		{"networkpolicy", newNetworkPolicyProbe},
+		{"node", newNodeProbe},
+		{"persistentvolume", newPersistentVolumeProbe},
+		{"persistentvolumeclaim", newPersistentVolumeClaimProbe},
+		{"pod", newPodProbe},
+		{"replicaset", newReplicaSetProbe},
+		{"replicationcontroller", newReplicationControllerProbe},
+		{"service", newServiceProbe},
+		{"statefulset", newStatefulSetProbe},
+		{"storageclass", newStorageClassProbe},
+		{"container", newContainerProbe}, // 'container' subprobe requires 'pod' subprobe
 	}
 
 	subprobes := make(map[string]Subprobe)
-	for _, name := range enabledSubprobes {
-		if probeHandler, ok := resourceHandlers[name]; ok {
-			subprobes[name] = probeHandler(clientset, g)
-		} else {
-			logging.GetLogger().Errorf("skipping unsupported probe %v", name)
+	if len(configSubprobes) == 0 {
+		for _, handler := range resourceHandlers {
+			subprobes[handler.name] = nil
+		}
+	}
+
+	for _, handler := range resourceHandlers {
+		if _, enabled := subprobes[handler.name]; enabled {
+			subprobes[handler.name] = handler.constructor(clientset, g, subprobes)
 		}
 	}
 

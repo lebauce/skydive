@@ -36,12 +36,12 @@ const ClusterName = "cluster"
 
 var clusterEventHandler = graph.NewEventHandler(100)
 
-type clusterCache struct {
+type clusterProbe struct {
 	*graph.EventHandler
 	graph *graph.Graph
 }
 
-func (c *clusterCache) Start() {
+func (c *clusterProbe) Start() {
 	c.graph.Lock()
 	defer c.graph.Unlock()
 
@@ -51,11 +51,11 @@ func (c *clusterCache) Start() {
 	logging.GetLogger().Debugf("Added cluster{Name: %s}", ClusterName)
 }
 
-func (c *clusterCache) Stop() {
+func (c *clusterProbe) Stop() {
 }
 
-func newClusterProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
-	return &clusterCache{
+func newClusterProbe(clientset *kubernetes.Clientset, g *graph.Graph, subprobes map[string]Subprobe) Subprobe {
+	return &clusterProbe{
 		EventHandler: clusterEventHandler,
 		graph:        g,
 	}

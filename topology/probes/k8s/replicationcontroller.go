@@ -44,6 +44,6 @@ func (h *replicationControllerHandler) Map(obj interface{}) (graph.Identifier, g
 	return graph.Identifier(rc.GetUID()), NewMetadata(Manager, "replicationcontroller", rc, rc.Name, rc.Namespace)
 }
 
-func newReplicationControllerProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
+func newReplicationControllerProbe(clientset *kubernetes.Clientset, g *graph.Graph, subprobes map[string]Subprobe) Subprobe {
 	return NewResourceCache(clientset.CoreV1().RESTClient(), &v1.ReplicationController{}, "replicationcontrollers", g, &replicationControllerHandler{})
 }

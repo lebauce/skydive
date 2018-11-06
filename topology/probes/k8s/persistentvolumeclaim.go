@@ -50,6 +50,6 @@ func (h *persistentVolumeClaimHandler) Map(obj interface{}) (graph.Identifier, g
 	return graph.Identifier(pvc.GetUID()), m
 }
 
-func newPersistentVolumeClaimProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
+func newPersistentVolumeClaimProbe(clientset *kubernetes.Clientset, g *graph.Graph, subprobes map[string]Subprobe) Subprobe {
 	return NewResourceCache(clientset.CoreV1().RESTClient(), &v1.PersistentVolumeClaim{}, "persistentvolumeclaims", g, &persistentVolumeClaimHandler{})
 }

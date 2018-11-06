@@ -62,6 +62,6 @@ func (h *podHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	return graph.Identifier(pod.GetUID()), m
 }
 
-func newPodProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
+func newPodProbe(clientset *kubernetes.Clientset, g *graph.Graph, subprobes map[string]Subprobe) Subprobe {
 	return NewResourceCache(clientset.CoreV1().RESTClient(), &v1.Pod{}, "pods", g, &podHandler{graph: g})
 }

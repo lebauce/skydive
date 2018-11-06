@@ -56,7 +56,7 @@ func (h *serviceHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata)
 	return graph.Identifier(srv.GetUID()), m
 }
 
-func newServiceProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
+func newServiceProbe(clientset *kubernetes.Clientset, g *graph.Graph, subprobes map[string]Subprobe) Subprobe {
 	return NewResourceCache(clientset.Core().RESTClient(), &v1.Service{}, "services", g, &serviceHandler{})
 }
 

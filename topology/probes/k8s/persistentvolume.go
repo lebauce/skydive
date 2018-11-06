@@ -55,6 +55,6 @@ func (h *persistentVolumeHandler) Map(obj interface{}) (graph.Identifier, graph.
 	return graph.Identifier(pv.GetUID()), m
 }
 
-func newPersistentVolumeProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
+func newPersistentVolumeProbe(clientset *kubernetes.Clientset, g *graph.Graph, subprobes map[string]Subprobe) Subprobe {
 	return NewResourceCache(clientset.CoreV1().RESTClient(), &v1.PersistentVolume{}, "persistentvolumes", g, &persistentVolumeHandler{})
 }

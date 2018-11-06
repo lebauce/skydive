@@ -62,7 +62,7 @@ func (h *nodeHandler) Map(obj interface{}) (graph.Identifier, graph.Metadata) {
 	return graph.Identifier(node.GetUID()), m
 }
 
-func newNodeProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
+func newNodeProbe(clientset *kubernetes.Clientset, g *graph.Graph, subprobes map[string]Subprobe) Subprobe {
 	return NewResourceCache(clientset.Core().RESTClient(), &v1.Node{}, "nodes", g, &nodeHandler{})
 }
 

@@ -48,6 +48,6 @@ func (h *storageClassHandler) Map(obj interface{}) (graph.Identifier, graph.Meta
 	return graph.Identifier(sc.GetUID()), m
 }
 
-func newStorageClassProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
+func newStorageClassProbe(clientset *kubernetes.Clientset, g *graph.Graph, subprobes map[string]Subprobe) Subprobe {
 	return NewResourceCache(clientset.StorageV1().RESTClient(), &v1.StorageClass{}, "storageclasses", g, &storageClassHandler{})
 }
