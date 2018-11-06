@@ -28,7 +28,7 @@ import (
 	"github.com/skydive-project/skydive/topology"
 	"github.com/skydive-project/skydive/topology/graph"
 
-	"k8s.io/client-go/kubernetes"
+	"k8s.io/api/core/v1"
 )
 
 const (
@@ -40,79 +40,68 @@ const (
 type containerProbe struct {
 	graph.EventHandler
 	graph.DefaultGraphListener
-	graph *graph.Graph
+	podCache *ResourceCache
+	graph    *graph.Graph
 }
 
-func (p *containerProbe) getContainerMetadata(podNode *graph.Node, containerName string, container map[string]interface{}) graph.Metadata {
-	podName, _ := podNode.GetFieldString("Name")
-	podNamespace, _ := podNode.GetFieldString("Namespace")
-	m := NewMetadata(Manager, "container", container, containerName, podNamespace)
-	m.SetField("Pod", podName)
-	m.SetField("Image", container["Image"])
+func (p *containerProbe) getContainerMetadata(pod *v1.Pod, container *v1.Container) graph.Metadata {
+	m := NewMetadata(Manager, "container", container, container.Name, pod.Namespace)
+	m.SetField("Pod", pod.Name)
+	m.SetFieldAndNormalize("Labels", pod.Labels)
+	m.SetField("Image", container.Image)
 	return m
 }
 
 func (p *containerProbe) handleContainers(podNode *graph.Node) map[graph.Identifier]*graph.Node {
+	pod := p.podCache.getByNode(podNode).(*v1.Pod)
 	containers := make(map[graph.Identifier]*graph.Node)
-	specContainers, _ := podNode.GetField(detailsField + ".Spec.Containers")
-	if specContainers, ok := specContainers.([]interface{}); ok {
-		for _, container := range specContainers {
-			if container, ok := container.(map[string]interface{}); ok {
-				containerName := container["Name"].(string)
-				uid := graph.GenID(string(podNode.ID), containerName)
-				m := p.getContainerMetadata(podNode, containerName, container)
-				node := p.graph.GetNode(uid)
-				if node == nil {
-					node = p.graph.NewNode(uid, m)
-					p.graph.NewEdge(graph.GenID(), podNode, node, topology.OwnershipMetadata(), "")
-				} else {
-					p.graph.SetMetadata(node, m)
-				}
-				containers[uid] = node
-			}
+	for _, container := range pod.Spec.Containers {
+		uid := graph.GenID(string(pod.GetUID()), container.Name)
+		m := p.getContainerMetadata(pod, &container)
+		node := p.graph.GetNode(uid)
+		if node == nil {
+			node = p.graph.NewNode(uid, m)
+			p.graph.NewEdge(graph.GenID(), podNode, node, topology.OwnershipMetadata(), "")
+		} else {
+			p.graph.SetMetadata(node, m)
 		}
+		containers[uid] = node
 	}
 	return containers
 }
 
 func (p *containerProbe) OnNodeAdded(node *graph.Node) {
-	if nodeType, _ := node.GetFieldString("Type"); nodeType == "pod" {
-		p.handleContainers(node)
-	}
+	p.handleContainers(node)
 }
 
 func (p *containerProbe) OnNodeUpdated(node *graph.Node) {
-	if nodeType, _ := node.GetFieldString("Type"); nodeType == "pod" {
-		previousContainers := p.graph.LookupChildren(node, graph.Metadata{"Type": "container"}, topology.OwnershipMetadata())
-		containers := p.handleContainers(node)
+	previousContainers := p.graph.LookupChildren(node, graph.Metadata{"Type": "container"}, topology.OwnershipMetadata())
+	containers := p.handleContainers(node)
 
-		for _, container := range previousContainers {
-			if _, found := containers[container.ID]; !found {
-				p.graph.DelNode(container)
-			}
-		}
-	}
-}
-
-func (p *containerProbe) OnNodeDeleted(node *graph.Node) {
-	if nodeType, _ := node.GetFieldString("Type"); nodeType == "pod" {
-		containers := p.graph.LookupChildren(node, graph.Metadata{"Type": "container"}, topology.OwnershipMetadata())
-		for _, container := range containers {
+	for _, container := range previousContainers {
+		if _, found := containers[container.ID]; !found {
 			p.graph.DelNode(container)
 		}
 	}
 }
 
+func (p *containerProbe) OnNodeDeleted(node *graph.Node) {
+	containers := p.graph.LookupChildren(node, graph.Metadata{"Type": "container"}, topology.OwnershipMetadata())
+	for _, container := range containers {
+		p.graph.DelNode(container)
+	}
+}
+
 func (p *containerProbe) Start() {
-	p.graph.AddEventListener(p)
+	p.podCache.AddEventListener(p)
 }
 
 func (p *containerProbe) Stop() {
-	p.graph.RemoveEventListener(p)
+	p.podCache.RemoveEventListener(p)
 }
 
-func newContainerProbe(clientset *kubernetes.Clientset, g *graph.Graph) Subprobe {
-	return &containerProbe{graph: g}
+func newContainerProbe(podProbe Subprobe, g *graph.Graph) Subprobe {
+	return &containerProbe{graph: g, podCache: podProbe.(*ResourceCache)}
 }
 
 func newDockerIndexer(g *graph.Graph) *graph.MetadataIndexer {

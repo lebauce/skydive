@@ -72,7 +72,6 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 
 	resourceHandlers := map[string]resourceHandler{
 		"cluster":               newClusterProbe,
-		"container":             newContainerProbe,
 		"cronjob":               newCronJobProbe,
 		"daemonset":             newDaemonSetProbe,
 		"deployment":            newDeploymentProbe,
@@ -104,6 +103,12 @@ func NewK8sProbe(g *graph.Graph) (*Probe, error) {
 			subprobes[name] = probeHandler(clientset, g)
 		} else {
 			logging.GetLogger().Errorf("skipping unsupported probe %v", name)
+		}
+	}
+
+	for _, name := range enabledSubprobes {
+		if name == "container" {
+			subprobes[name] = newContainerProbe(subprobes["pod"], g)
 		}
 	}
 
