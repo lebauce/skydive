@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/skydive-project/skydive/logging"
-	"github.com/skydive-project/skydive/topology/graph/realtime"
 )
 
 // Target describes the XML coding of the target of an interface in libvirt
@@ -42,42 +41,31 @@ type Domain struct {
 	Interfaces []Interface `xml:"devices>interface"`
 }
 
-func getMetadataForVmConnection(itf *Interface) map[string]string {
-	address := itf.Address
-	formatted := fmt.Sprintf(
-		"%s:%s.%s.%s.%s", address.Type, address.Domain, address.Bus,
-		address.Slot, address.Function)
-	return map[string]string{
-		"Libvirt.MAC":     itf.Mac.Address,
-		"Libvirt.Address": formatted,
-		"Libvirt.Alias":   itf.Alias.Name,
-		"PeerIntfMAC":     itf.Mac.Address,
-	}
-}
-
-func FindInterfacesVMConnectedThrough(XMLDesc string, constraint string) (map[string]realtime.NodesConnectedToType, error) {
-	InterfacesConnectedTo := make(map[string]realtime.NodesConnectedToType)
-	d := Domain{}
-	if err := xml.Unmarshal([]byte(XMLDesc), &d); err != nil {
-		logging.GetLogger().Errorf("XML parsing error: %s", err)
+func GetVMInterfaces(XMLDesc string) ([]interface{}, error) {
+	domain := Domain{}
+	if err := xml.Unmarshal([]byte(XMLDesc), &domain); err != nil {
 		return nil, fmt.Errorf("XML parsing error: %s", err)
 	}
-	// Iterate through list
-	for i := range d.Interfaces {
-		interf := &d.Interfaces[i]
-		if constraint != "" && constraint != interf.Alias.Name {
-			continue
+
+	interfaces := make([]interface{}, len(domain.Interfaces))
+	for i, interf := range domain.Interfaces {
+		address := interf.Address
+		formatted := fmt.Sprintf(
+			"%s:%s.%s.%s.%s", address.Type, address.Domain, address.Bus,
+			address.Slot, address.Function)
+		metadata := map[string]interface{}{
+			"MAC":     interf.Mac.Address,
+			"Address": formatted,
+			"Alias":   interf.Alias.Name,
 		}
 		if interf.Target.Dev != "" {
-			metadata := getMetadataForVmConnection(interf)
-			logging.GetLogger().Debugf("Found a dev target %s", interf.Target.Dev)
-			InterfacesConnectedTo[interf.Target.Dev] = realtime.NodesConnectedToType{
-				Name:     interf.Target.Dev,
-				Type:     realtime.VLAYER_CONNECTION_TYPE,
-				Metadata: metadata,
+			metadata["Target"] = map[string]interface{}{
+				"Dev": interf.Target.Dev,
 			}
 		}
-
+		interfaces[i] = metadata
 	}
-	return InterfacesConnectedTo, nil
+
+	logging.GetLogger().Debugf("Found interfaces %s", interfaces)
+	return interfaces, nil
 }

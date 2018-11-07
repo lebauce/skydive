@@ -20,7 +20,6 @@ import (
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/topology/graph"
-	"github.com/skydive-project/skydive/topology/graph/realtime"
 	"github.com/skydive-project/skydive/topology/probes/libvirt/helpers"
 )
 
@@ -47,7 +46,9 @@ type LibVirtProbe struct {
 	State                     int64
 	Connected                 atomic.Value
 	Wg                        sync.WaitGroup
-	GraphRealtimeHandler      *realtime.GraphHandler
+	intfIndexer               *graph.MetadataIndexer
+	vmIndexer                 *graph.MetadataIndexer
+	linker                    *graph.MetadataIndexerLinker
 	Client                    *libvirt.Connect
 	libvirtCallbackId         int
 	libvirtDevAddedCallbackId int
@@ -62,49 +63,50 @@ func (probe *LibVirtProbe) getVirtualMachineStatus(Vm *libvirt.Domain) string {
 	return state
 }
 
-func (probe *LibVirtProbe) unregisterVM(Vm *libvirt.Domain) {
+func (probe *LibVirtProbe) unsyncVM(Vm *libvirt.Domain) {
+	probe.Graph.Lock()
+	defer probe.Graph.Unlock()
+
 	VmName, _ := Vm.GetName()
 	logging.GetLogger().Debugf("UnRegister virtual machine: %s", VmName)
-	probe.GraphRealtimeHandler.RemoveNode(VmName)
-}
-
-func (probe *LibVirtProbe) changeStatusOfVm(Vm *libvirt.Domain) {
-	VmName, _ := Vm.GetName()
-	vmNode := probe.GraphRealtimeHandler.GetNodeByIdentifier(VmName)
-	if vmNode == nil {
-		logging.GetLogger().Errorf("Vm node doesn't exist in topology in topology: %s", VmName)
-		return
+	vmNodes, _ := probe.vmIndexer.Get(VmName)
+	if len(vmNodes) != 0 {
+		probe.Graph.DelNode(vmNodes[0])
 	}
-	state_stringified := probe.getVirtualMachineStatus(Vm)
-	logging.GetLogger().Debugf("Vm %s status changed to: %s", VmName, state_stringified)
-	probe.Graph.AddMetadata(vmNode, "State", state_stringified)
 }
 
-func (probe *LibVirtProbe) registerVM(Vm *libvirt.Domain) error {
+func (probe *LibVirtProbe) syncVM(Vm *libvirt.Domain) error {
 	VmName, _ := Vm.GetName()
 	XMLDesc, _ := Vm.GetXMLDesc(0)
-	nodes, err := helpers.FindInterfacesVMConnectedThrough(XMLDesc, "")
+	interfaces, err := helpers.GetVMInterfaces(XMLDesc)
 	if err != nil {
 		return err
 	}
-	logging.GetLogger().Debugf("Register virtual machine: %s", VmName)
 
-	VmID, _ := Vm.GetID()
-
-	logging.GetLogger().Debugf("Register VM: %s", VmName)
-	state_stringified := probe.getVirtualMachineStatus(Vm)
-	metadata := &graph.Metadata{
+	VmID, _ := Vm.GetUUIDString()
+	metadata := graph.Metadata{
 		"Type":    MANAGER,
 		"Manager": MANAGER,
 		"Name":    VmName,
 		"LibVirt": map[string]interface{}{
-			"ID":   VmID,
-			"Name": VmName,
+			"ID":         string(VmID) + "." + VmName,
+			"Name":       VmName,
+			"Interfaces": interfaces,
 		},
-		"State": state_stringified,
+		"State": probe.getVirtualMachineStatus(Vm),
 	}
-	probe.GraphRealtimeHandler.AddNode(VmName, metadata, nodes)
-	logging.GetLogger().Debugf("Finalized registration of virtual machine: %s", VmName)
+
+	probe.Graph.Lock()
+	defer probe.Graph.Unlock()
+
+	if node := probe.Graph.LookupFirstNode(graph.Metadata{"Type": MANAGER, "Name": VmName}); node == nil {
+		probe.Graph.NewNode(graph.Identifier(VmID), metadata)
+		logging.GetLogger().Debugf("Finalized registration of virtual machine: %s", VmName)
+	} else {
+		probe.Graph.SetMetadata(node, metadata)
+		logging.GetLogger().Debugf("Updated virtual machine: %s", VmName)
+	}
+
 	return nil
 }
 
@@ -113,20 +115,19 @@ func (probe *LibVirtProbe) handleLibVirtEvent(Connection *libvirt.Connect, Domai
 	logging.GetLogger().Debugf("got libvirt event: %d - %s", e.Event, VmName)
 	switch e.Event {
 	case libvirt.DOMAIN_EVENT_UNDEFINED:
-		probe.unregisterVM(Domain)
+		probe.unsyncVM(Domain)
 		break
 	case libvirt.DOMAIN_EVENT_STARTED:
-		probe.registerVM(Domain)
-		probe.changeStatusOfVm(Domain)
+		probe.syncVM(Domain)
 		break
 	case libvirt.DOMAIN_EVENT_STOPPED:
-		probe.changeStatusOfVm(Domain)
+		probe.syncVM(Domain)
 		break
 	case libvirt.DOMAIN_EVENT_SHUTDOWN:
-		probe.changeStatusOfVm(Domain)
+		probe.syncVM(Domain)
 		break
 	case libvirt.DOMAIN_EVENT_DEFINED:
-		probe.registerVM(Domain)
+		probe.syncVM(Domain)
 		break
 	}
 	return
@@ -136,7 +137,7 @@ func (probe *LibVirtProbe) isLibvirtCallbackConnected() bool {
 	return probe.libvirtCallbackId != -1
 }
 
-func (probe *LibVirtProbe) periodicLibvirtChecker(ctx *context.Context) {
+func (probe *LibVirtProbe) periodicLibvirtChecker(ctx context.Context) {
 	for ctx.Err() == nil {
 		if err := libvirt.EventRunDefaultImpl(); err != nil {
 			logging.GetLogger().Errorf("libvirt poll loop problem: %s", err)
@@ -149,13 +150,7 @@ func (probe *LibVirtProbe) callbackDeviceAdded(
 	c *libvirt.Connect, Vm *libvirt.Domain,
 	event *libvirt.DomainEventDeviceAdded,
 ) {
-	VmName, _ := Vm.GetName()
-	XMLDesc, _ := Vm.GetXMLDesc(0)
-	nodes, err := helpers.FindInterfacesVMConnectedThrough(XMLDesc, event.DevAlias)
-	if err != nil {
-		return
-	}
-	probe.GraphRealtimeHandler.UpdateConnectionsForNode(VmName, nodes)
+	probe.syncVM(Vm)
 }
 
 func (probe *LibVirtProbe) Connect() error {
@@ -203,7 +198,7 @@ func (probe *LibVirtProbe) Connect() error {
 			return
 		}
 		for _, Vm := range doms {
-			err = probe.registerVM(&Vm)
+			err = probe.syncVM(&Vm)
 		}
 	}()
 	return nil
@@ -211,6 +206,10 @@ func (probe *LibVirtProbe) Connect() error {
 
 // Start the probe
 func (probe *LibVirtProbe) Start() {
+	probe.vmIndexer.Start()
+	probe.intfIndexer.Start()
+	probe.linker.Start()
+
 	if !atomic.CompareAndSwapInt64(&probe.State, common.StoppedState, common.RunningState) {
 		return
 	}
@@ -222,6 +221,10 @@ func (probe *LibVirtProbe) Start() {
 
 // Stop the probe
 func (probe *LibVirtProbe) Stop() {
+	probe.vmIndexer.Stop()
+	probe.intfIndexer.Stop()
+	probe.linker.Stop()
+
 	if !atomic.CompareAndSwapInt64(&probe.State, common.RunningState, common.StoppingState) {
 		return
 	}
@@ -238,20 +241,21 @@ func (probe *LibVirtProbe) Stop() {
 		probe.Client.DomainEventDeregister(probe.libvirtCallbackId)
 		probe.Client.DomainEventDeregister(probe.libvirtDevAddedCallbackId)
 	}
-	probe.Graph.RemoveEventListener(probe.GraphRealtimeHandler)
 	atomic.StoreInt64(&probe.State, common.StoppedState)
 }
 
 // NewDProbe creates a new topology libvirt probe
 func NewProbe(g *graph.Graph, root *graph.Node) (*LibVirtProbe, error) {
 	probe := &LibVirtProbe{
-		Graph:                g,
-		Root:                 root,
-		url:                  config.GetString("libvirt.url"),
-		GraphRealtimeHandler: realtime.MakeGraphHandler(g, "Name"),
-		State:                common.StoppedState,
-		libvirtCallbackId:    STOPPED_LIBVIRT_COMMUNICATION,
+		Graph:             g,
+		Root:              root,
+		url:               config.GetString("libvirt.url"),
+		intfIndexer:       graph.NewMetadataIndexer(g, g, graph.Metadata{"Driver": "tun"}, "Name"),
+		vmIndexer:         graph.NewMetadataIndexer(g, g, graph.Metadata{"Type": MANAGER}, "LibVirt.Interfaces.Target.Dev"),
+		State:             common.StoppedState,
+		libvirtCallbackId: STOPPED_LIBVIRT_COMMUNICATION,
 	}
-	g.AddEventListener(probe.GraphRealtimeHandler)
+
+	probe.linker = graph.NewMetadataIndexerLinker(g, probe.intfIndexer, probe.vmIndexer, graph.Metadata{"RelationType": "vlayer2"})
 	return probe, nil
 }
