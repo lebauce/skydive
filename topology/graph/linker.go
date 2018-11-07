@@ -179,6 +179,13 @@ func getFieldsAsArray(obj filters.Getter, fields []string) ([]interface{}, error
 		}
 		values[i] = v
 	}
+
+	for i, value := range values {
+		if value, ok := value.([]interface{}); ok {
+			values = append(append(values[:i], values[i+1:]...), value...)
+		}
+	}
+
 	return values, nil
 }
 
