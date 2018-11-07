@@ -208,7 +208,7 @@ func NewMetadataIndexer(g *Graph, listenerHandler ListenerHandler, m ElementMatc
 					return map[string]interface{}{string(n.ID): nil}
 				default:
 					kv = make(map[string]interface{})
-					if values, err := getFieldsAsArray(n, indexes); err == nil {
+					if values, err := getFieldsAsArray(n, indexes); err == nil && len(values) > 0 {
 						kv[indexer.Hash(values...)] = values
 					}
 				}
