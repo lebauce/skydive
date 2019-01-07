@@ -59,8 +59,9 @@ function run_functional_tests {
   vagrant ssh agent1 -c 'sudo iptables -F ; sudo iptables -P FORWARD ACCEPT'
 
   if [ "$mode" = "container" ]; then
-      OPT="-nooftests"
+      OPT="-ovs.oflow.native"
   fi
+
   vagrant ssh agent1 -c "AGENT1_IP=$AGENT1_IP SKYDIVE_ANALYZERS=\"$ANALYZER1_IP:8082\" sudo -E ./functionals -agenttestsonly -test.v $OPT"
 
   if [ "$mode" = "package" ]; then

@@ -27,8 +27,6 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/go-test/deep"
-	"github.com/skydive-project/goloxi"
-	"github.com/skydive-project/goloxi/of10"
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 )
@@ -38,16 +36,10 @@ type ruleCmd struct {
 	add  bool
 }
 
-func checkTest(t *testing.T) {
-	if noOFTests {
-		t.Skip("Don't run OpenFlows test as /usr/bin/ovs-ofctl didn't exist in agent process namespace")
-	}
-}
-
 func verify(c *CheckContext, bridge string, expected []int) error {
 	l := len(expected)
 	found := make([]int, l)
-	gremlin := c.gremlin.V().Has("Type", "ovsbridge", "Name", bridge).Out("Type", "ofrule")
+	gremlin := c.gremlin.V().Has("Type", "ovsbridge", "Name", bridge).Out("Type", "ofrule").Sort()
 	nodes, _ := c.gh.GetNodes(gremlin)
 	for _, node := range nodes {
 		metadata := node.Metadata
@@ -93,7 +85,6 @@ func verify(c *CheckContext, bridge string, expected []int) error {
 }
 
 func makeTest(t *testing.T, suffix string, rules []ruleCmd, expected []int) {
-	checkTest(t)
 	bridge := "br-of" + suffix
 	intf1 := "intf1-" + suffix
 	intf2 := "intf2-" + suffix
@@ -102,6 +93,7 @@ func makeTest(t *testing.T, suffix string, rules []ruleCmd, expected []int) {
 		{"ovs-vsctl add-br " + bridge, true},
 		{"ovs-vsctl add-port " + bridge + " " + intf1 + " -- set interface " + intf1 + " type=internal", true},
 		{"ovs-vsctl add-port " + bridge + " " + intf2 + " -- set interface " + intf2 + " type=internal", true},
+		{"sleep 2", true},
 	}
 
 	for _, ruleCmd := range rules {
@@ -165,7 +157,6 @@ func TestSuperimposedOFRule(t *testing.T) {
 }
 
 func TestDelRuleWithBridgeOFRule(t *testing.T) {
-	checkTest(t)
 	setupCmds := []Cmd{
 		{"ovs-vsctl --if-exists del-br br-of4", true},
 		{"ovs-vsctl add-br br-of4", true},
@@ -242,7 +233,6 @@ func verifyGroup(c *CheckContext, bridge string, expected int) error {
 }
 
 func TestAddOFGroup(t *testing.T) {
-	checkTest(t)
 	setupCmds := []Cmd{
 		{"ovs-vsctl --if-exists del-br br-of6", true},
 		{"ovs-vsctl add-br br-of6", true},
@@ -266,7 +256,6 @@ func TestAddOFGroup(t *testing.T) {
 }
 
 func TestModOFGroup(t *testing.T) {
-	checkTest(t)
 	setupCmds := []Cmd{
 		{"ovs-vsctl --if-exists del-br br-of7", true},
 		{"ovs-vsctl add-br br-of7", true},
@@ -290,7 +279,6 @@ func TestModOFGroup(t *testing.T) {
 }
 
 func TestDelOFGroup(t *testing.T) {
-	checkTest(t)
 	setupCmds := []Cmd{
 		{"ovs-vsctl --if-exists del-br br-of4", true},
 		{"ovs-vsctl add-br br-of8", true},
@@ -955,8 +943,8 @@ func TestOVSGroupAdd(t *testing.T) {
 		delete(metadata, "Metric")
 
 		expectedMetadata := map[string]interface{}{
-			"GroupID":   int64(1),
-			"GroupType": int64(0),
+			"GroupId":   int64(1),
+			"GroupType": "all",
 			"Type":      "ofgroup",
 			"Buckets": []interface{}{
 				map[string]interface{}{
