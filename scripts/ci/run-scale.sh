@@ -18,6 +18,7 @@ export SKYDIVE=${GOPATH}/bin/skydive
 export FLOW_PROTOCOL=${FLOW_PROTOCOL:-websocket}
 export SKYDIVE_LOGGING_LEVEL=DEBUG
 
+ulimits -n 4096
 make test.functionals WITH_SCALE=true TAGS=${TAGS} VERBOSE=true TIMEOUT=10m TEST_PATTERN=Scale
 status=$?
 
