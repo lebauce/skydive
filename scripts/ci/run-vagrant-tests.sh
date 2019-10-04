@@ -93,5 +93,13 @@ do
   vagrant ssh analyzer1 -- sudo journalctl -n 200 -u skydive-analyzer
   vagrant ssh agent1 -- sudo journalctl -n 200 -u skydive-agent
 
+  if [ "$mode" = "package" ]; then
+    echo "===== ausearch AVC on analyzer1 ======"
+    vagrant ssh analyzer1 -c 'sudo ausearch -m avc -r' || true
+
+    echo "===== ausearch AVC on agent1 ======"
+    vagrant ssh agent1 -c 'sudo ausearch -m avc -r' || true
+  fi
+
   vagrant destroy --force
 done
