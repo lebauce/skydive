@@ -102,10 +102,10 @@ require (
 	github.com/xeipuuv/gojsonreference v0.0.0-20150808065054-e02fc20de94c // indirect
 	github.com/xeipuuv/gojsonschema v0.0.0-20180618132009-1d523034197f
 	go.uber.org/zap v1.10.0
-	golang.org/x/crypto v0.0.0-20191002192127-34f69633bfdc // indirect
-	golang.org/x/net v0.0.0-20191007182048-72f939374954
-	golang.org/x/sys v0.0.0-20190924154521-2837fb4f24fe
-	golang.org/x/tools v0.0.0-20191007185444-6536af71d98a
+	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550 // indirect
+	golang.org/x/net v0.0.0-20191014212845-da9a3fd4c582
+	golang.org/x/sys v0.0.0-20191010194322-b09406accb47
+	golang.org/x/tools v0.0.0-20191017151554-a3bc800455d5
 	google.golang.org/genproto v0.0.0-20190926190326-7ee9db18f195 // indirect
 	google.golang.org/grpc v1.23.1
 	gopkg.in/errgo.v1 v1.0.0-20161222125816-442357a80af5 // indirect
