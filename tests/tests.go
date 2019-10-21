@@ -80,7 +80,8 @@ agent:
   listen: {{.AgentAddr}}:{{.AgentPort}}
   topology:
     probes:
-    - ovsdb
+	- ovsdb
+	- blockdev
     - docker
     - lxd
     - lldp
