@@ -20,13 +20,11 @@ package blockdev
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"os/exec"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
-	"unicode/utf8"
+
+	"github.com/mitchellh/mapstructure"
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
@@ -56,64 +54,64 @@ const managerType string = "blockdev"
 // encoded.  Using json.RawMessage allows the code deal with either
 // encoding.
 type BlockDevice struct {
-	Children []BlockDevice `json:"children"`
+	Children []BlockDevice `mapstructure:"children"`
 
-	Alignment    json.RawMessage `json:"alignment"` //int64
-	DiscAln      json.RawMessage `json:"disc-aln"`  // int64
-	DiscGran     string          `json:"disc-gran"`
-	DiscMax      string          `json:"disc-max"`
-	DiscZero     json.RawMessage `json:"disc-zero"` // bool
-	Fsavail      string          `json:"fsavail"`
-	Fssize       string          `json:"fssize"`
-	Fstype       string          `json:"fstype"`
-	FsusePercent string          `json:"fsuse%"`
-	Fsused       string          `json:"fsused"`
-	Group        string          `json:"group"`
-	Hctl         string          `json:"hctl"`
-	Hotplug      json.RawMessage `json:"hotplug"` // bool
-	Kname        string          `json:"kname"`
-	Label        string          `json:"label"`
-	LogSec       json.RawMessage `json:"log-sec"` // int64
-	MajMin       string          `json:"maj:min"`
-	MinIo        json.RawMessage `json:"min-io"` // int64
-	Mode         string          `json:"mode"`
-	Model        string          `json:"model"`
-	Mountpoint   string          `json:"mountpoint"`
-	Name         string          `json:"name"`
-	OptIo        json.RawMessage `json:"opt-io"` // int64
-	Owner        string          `json:"owner"`
-	Partflags    string          `json:"partflags"`
-	Partlabel    string          `json:"partlabel"`
-	Parttype     string          `json:"parttype"`
-	Partuuid     string          `json:"partuuid"`
-	Path         string          `json:"path"`
-	PhySec       json.RawMessage `json:"hpy-sec"` // int64
-	Pkname       string          `json:"pkname"`
-	Pttype       string          `json:"pttype"`
-	Ptuuid       string          `json:"ptuuid"`
-	Ra           json.RawMessage `json:"ra"`   // int64
-	Rand         json.RawMessage `json:"rand"` // bool
-	Rev          string          `json:"rev"`
-	Rm           json.RawMessage `json:"rm"`      // bool
-	Ro           json.RawMessage `json:"ro"`      // bool
-	Rota         json.RawMessage `json:"rota"`    // bool
-	RqSize       json.RawMessage `json:"rq-size"` // int64
-	Sched        string          `json:"sched"`
-	Serial       string          `json:"serial"`
-	Size         string          `json:"size"`
-	State        string          `json:"state"`
-	Subsystems   string          `json:"subsystems"`
-	Tran         string          `json:"tran"`
-	Type         string          `json:"type"`
-	UUID         string          `json:"uuid"`
-	Vendor       string          `json:"vendor"`
-	Wsame        string          `json:"wsame"`
-	WWN          string          `json:"wwn"`
+	Alignment    int64  `mapstructure:"alignment"`
+	DiscAln      int64  `mapstructure:"disc-aln"`
+	DiscGran     string `mapstructure:"disc-gran"`
+	DiscMax      string `mapstructure:"disc-max"`
+	DiscZero     bool   `mapstructure:"disc-zero"`
+	Fsavail      string `mapstructure:"fsavail"`
+	Fssize       string `mapstructure:"fssize"`
+	Fstype       string `mapstructure:"fstype"`
+	FsusePercent string `mapstructure:"fsuse%"`
+	Fsused       string `mapstructure:"fsused"`
+	Group        string `mapstructure:"group"`
+	Hctl         string `mapstructure:"hctl"`
+	Hotplug      bool   `mapstructure:"hotplug"`
+	Kname        string `mapstructure:"kname"`
+	Label        string `mapstructure:"label"`
+	LogSec       int64  `mapstructure:"log-sec"`
+	MajMin       string `mapstructure:"maj:min"`
+	MinIo        int64  `mapstructure:"min-io"`
+	Mode         string `mapstructure:"mode"`
+	Model        string `mapstructure:"model"`
+	Mountpoint   string `mapstructure:"mountpoint"`
+	Name         string `mapstructure:"name"`
+	OptIo        int64  `mapstructure:"opt-io"`
+	Owner        string `mapstructure:"owner"`
+	Partflags    string `mapstructure:"partflags"`
+	Partlabel    string `mapstructure:"partlabel"`
+	Parttype     string `mapstructure:"parttype"`
+	Partuuid     string `mapstructure:"partuuid"`
+	Path         string `mapstructure:"path"`
+	PhySec       int64  `mapstructure:"hpy-sec"`
+	Pkname       string `mapstructure:"pkname"`
+	Pttype       string `mapstructure:"pttype"`
+	Ptuuid       string `mapstructure:"ptuuid"`
+	Ra           int64  `mapstructure:"ra"`
+	Rand         bool   `mapstructure:"rand"`
+	Rev          string `mapstructure:"rev"`
+	Rm           bool   `mapstructure:"rm"`
+	Ro           bool   `mapstructure:"ro"`
+	Rota         bool   `mapstructure:"rota"`
+	RqSize       int64  `mapstructure:"rq-size"`
+	Sched        string `mapstructure:"sched"`
+	Serial       string `mapstructure:"serial"`
+	Size         string `mapstructure:"size"`
+	State        string `mapstructure:"state"`
+	Subsystems   string `mapstructure:"subsystems"`
+	Tran         string `mapstructure:"tran"`
+	Type         string `mapstructure:"type"`
+	UUID         string `mapstructure:"uuid"`
+	Vendor       string `mapstructure:"vendor"`
+	Wsame        string `mapstructure:"wsame"`
+	WWN          string `mapstructure:"wwn"`
 }
 
 // Devices used for JSON parsing
 type Devices struct {
-	Blockdevices []BlockDevice `json:"blockdevices"`
+	Blockdevices []BlockDevice `mapstructure:"blockdevices"`
 }
 
 type blockdevInfo struct {
@@ -186,42 +184,6 @@ func (p *ProbeHandler) addGroup(blockdev BlockDevice, WWN string) *graph.Node {
 	return p.addGroupByName(groupName, WWN)
 }
 
-func (p *ProbeHandler) getInt(field json.RawMessage) int64 {
-	// If the JSON has an integer value of "field": null field parameter
-	// to this function will be set to nil
-	if field == nil {
-		return 0
-	}
-	if utf8.Valid(field) {
-		var i int64
-		i, err := strconv.ParseInt(strings.Replace(string(field), "\"", "", -1), 10, 64)
-
-		if err == nil {
-			return i
-		}
-	}
-	p.Ctx.Logger.Error(errors.New("blockdev probe failed to parse integer JSON field from lsblk"))
-	return -1
-}
-
-func (p *ProbeHandler) getBool(field json.RawMessage) bool {
-
-	if utf8.Valid(field) {
-		// ParseBool will deal with:
-		// 1, t, T, true, TRUE, True along with the variations for false
-		//
-		// If the JSON is encoded as a string it will include the quotes.  Use
-		// strings.Replace() to remove them
-		b, err := strconv.ParseBool(strings.Replace(string(field), "\"", "", -1))
-		if err != nil {
-			p.Ctx.Logger.Error(err)
-		}
-		return b
-	}
-	p.Ctx.Logger.Error(errors.New("blockdev probe failed to parse boolean JSON field from lsblk"))
-	return false
-}
-
 func (p *ProbeHandler) getMetaData(blockdev BlockDevice, childCount int, parentWWN string) (metadata graph.Metadata) {
 	var blockdevMetadata Metadata
 	var nodeType string
@@ -249,11 +211,11 @@ func (p *ProbeHandler) getMetaData(blockdev BlockDevice, childCount int, parentW
 	blockdevMetadata = Metadata{
 		Index:        p.getID(blockdev),
 		Name:         p.getName(blockdev),
-		Alignment:    p.getInt(blockdev.Alignment),
-		DiscAln:      p.getInt(blockdev.DiscAln),
+		Alignment:    blockdev.Alignment,
+		DiscAln:      blockdev.DiscAln,
 		DiscGran:     blockdev.DiscGran,
 		DiscMax:      blockdev.DiscMax,
-		DiscZero:     p.getBool(blockdev.DiscZero),
+		DiscZero:     blockdev.DiscZero,
 		Fsavail:      blockdev.Fsavail,
 		Fssize:       blockdev.Fssize,
 		Fstype:       blockdev.Fstype,
@@ -261,32 +223,32 @@ func (p *ProbeHandler) getMetaData(blockdev BlockDevice, childCount int, parentW
 		Fsused:       blockdev.Fsused,
 		Group:        blockdev.Group,
 		Hctl:         blockdev.Hctl,
-		Hotplug:      p.getBool(blockdev.Hotplug),
+		Hotplug:      blockdev.Hotplug,
 		Kname:        blockdev.Kname,
 		Label:        blockdev.Label,
-		LogSec:       p.getInt(blockdev.LogSec),
+		LogSec:       blockdev.LogSec,
 		MajMin:       blockdev.MajMin,
-		MinIo:        p.getInt(blockdev.MinIo),
+		MinIo:        blockdev.MinIo,
 		Mode:         blockdev.Mode,
 		Model:        blockdev.Model,
 		Mountpoint:   blockdev.Mountpoint,
-		OptIo:        p.getInt(blockdev.OptIo),
+		OptIo:        blockdev.OptIo,
 		Owner:        blockdev.Owner,
 		Partflags:    blockdev.Partflags,
 		Partlabel:    blockdev.Partlabel,
 		Parttype:     blockdev.Parttype,
 		Partuuid:     blockdev.Partuuid,
 		Path:         blockdev.Path,
-		PhySec:       p.getInt(blockdev.PhySec),
+		PhySec:       blockdev.PhySec,
 		Pttype:       blockdev.Pttype,
 		Ptuuid:       blockdev.Ptuuid,
-		Ra:           p.getInt(blockdev.Ra),
-		Rand:         p.getBool(blockdev.Rand),
+		Ra:           blockdev.Ra,
+		Rand:         blockdev.Rand,
 		Rev:          blockdev.Rev,
-		Rm:           p.getBool(blockdev.Rm),
-		Ro:           p.getBool(blockdev.Ro),
-		Rota:         p.getBool(blockdev.Rota),
-		RqSize:       p.getInt(blockdev.RqSize),
+		Rm:           blockdev.Rm,
+		Ro:           blockdev.Ro,
+		Rota:         blockdev.Rota,
+		RqSize:       blockdev.RqSize,
 		Sched:        blockdev.Sched,
 		Serial:       blockdev.Serial,
 		Size:         blockdev.Size,
@@ -427,6 +389,7 @@ func (p *ProbeHandler) connect() error {
 	var (
 		cmdOut []byte
 		err    error
+		intf   interface{}
 		result Devices
 	)
 
@@ -435,7 +398,11 @@ func (p *ProbeHandler) connect() error {
 		return err
 	}
 
-	if err = json.Unmarshal([]byte(cmdOut[:]), &result); err != nil {
+	if err = json.Unmarshal([]byte(cmdOut[:]), &intf); err != nil {
+		return err
+	}
+
+	if err = mapstructure.WeakDecode(intf, &result); err != nil {
 		return err
 	}
 
