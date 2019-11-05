@@ -80,14 +80,16 @@ agent:
   listen: {{.AgentAddr}}:{{.AgentPort}}
   topology:
     probes:
-	- ovsdb
-	- blockdev
+    - ovsdb
+    - blockdev
     - docker
     - lxd
     - lldp
     - runc
     - socketinfo
     - libvirt{{block "agentProbes" .}}{{"\n"}}{{range .AgentProbes}}{{println "    -" .}}{{end}}{{end}}
+    blockdev:
+      lsblk_path:
     netlink:
       metrics_update: 5
     lldp:

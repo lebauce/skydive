@@ -21,7 +21,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -166,9 +165,10 @@ func (p *ProbeHandler) addGroupByName(name string, WWN string) *graph.Node {
 	g.Lock()
 	defer g.Unlock()
 	metadata := graph.Metadata{
-		"Name": name,
-		"WWN":  WWN,
-		"Type": blockGroupType,
+		"Name":    name,
+		"WWN":     WWN,
+		"Type":    blockGroupType,
+		"Manager": managerType,
 	}
 	groupNode, err := g.NewNode(graph.GenID(), metadata)
 	if err != nil {
@@ -430,23 +430,13 @@ func (p *ProbeHandler) connect() error {
 		result Devices
 	)
 
-	testFile := os.Getenv("SKYDIVE_BLOCKDEV_TEST_FILE")
-
-	if testFile != "" {
-		if cmdOut, err = exec.Command("cat", testFile).Output(); err != nil {
-			p.Ctx.Logger.Error(err)
-			os.Exit(1)
-		}
-	} else {
-		if cmdOut, err = exec.Command("lsblk", "-pO", "--json").Output(); err != nil {
-			p.Ctx.Logger.Error(err)
-			os.Exit(1)
-		}
+	lsblkPath := p.Ctx.Config.GetString("agent.topology.blockdev.lsblk_path")
+	if cmdOut, err = exec.Command(lsblkPath, "-pO", "--json").Output(); err != nil {
+		return err
 	}
 
 	if err = json.Unmarshal([]byte(cmdOut[:]), &result); err != nil {
-		p.Ctx.Logger.Error(err)
-		os.Exit(1)
+		return err
 	}
 
 	// loop through the devices in the current map to make sure they haven't
@@ -467,9 +457,14 @@ func (p *ProbeHandler) connect() error {
 func (p *ProbeHandler) Do(ctx context.Context, wg *sync.WaitGroup) error {
 	p.addGroupByName(blockdevGroupName, "")
 
-	if _, err := topology.AddLink(p.Ctx.Graph, p.Ctx.RootNode, p.Groups[blockdevGroupName], "connected", nil); err != nil {
-		p.Ctx.Logger.Error(err)
-		return err
+	p.Ctx.Graph.Lock()
+	defer p.Ctx.Graph.Unlock()
+
+	if !topology.HaveLink(p.Ctx.Graph, p.Ctx.RootNode, p.Groups[blockdevGroupName], "connected") {
+		if _, err := topology.AddLink(p.Ctx.Graph, p.Ctx.RootNode, p.Groups[blockdevGroupName], "connected", nil); err != nil {
+			p.Ctx.Logger.Error(err)
+			return err
+		}
 	}
 
 	wg.Add(1)
