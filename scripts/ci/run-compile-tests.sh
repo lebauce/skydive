@@ -52,3 +52,6 @@ make clean
 
 # Compile static
 make static
+
+# Check repository is clean
+make check
