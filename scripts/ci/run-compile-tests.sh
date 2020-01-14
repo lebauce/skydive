@@ -5,6 +5,17 @@ set -e
 
 dir="$(dirname "$0")"
 
+sudo yum -y install rdma-core-devel lua-devel libmnl-devel libibverbs-devel
+sudo rm -rf /usr/local/src/dpdk /usr/local/share/dpdk
+sudo git clone http://dpdk.org/git/dpdk-stable /usr/local/src/dpdk
+cd /usr/local/src/dpdk
+sudo git checkout v18.11.5
+
+export RTE_TARGET=x86_64-native-linuxapp-gcc
+sudo -E make -C /usr/local/src/dpdk config T=$RTE_TARGET
+sudo -E make -C /usr/local/src/dpdk install T=$RTE_TARGET DESTDIR=/usr/local EXTRA_CFLAGS=-fPIC CONFIG_RTE_KNI_KMOD=n CONFIG_RTE_EAL_IGB_UIO=n CONFIG_RTE_LIBRTE_MLX4_PMD=y CONFIG_RTE_LIBRTE_MLX4_DLOPEN_DEPS=y CONFIG_RTE_LIBRTE_MLX5_PMD=y CONFIG_RTE_LIBRTE_MLX5_DLOPEN_DEPS=y
+exit 0
+
 set -e
 cd ${GOPATH}/src/github.com/skydive-project/skydive
 
