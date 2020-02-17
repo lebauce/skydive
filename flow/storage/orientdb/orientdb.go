@@ -30,7 +30,7 @@ import (
 	"github.com/skydive-project/skydive/filters"
 	"github.com/skydive-project/skydive/flow"
 	fl "github.com/skydive-project/skydive/flow/layers"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	orient "github.com/skydive-project/skydive/storage/orientdb"
 )
 

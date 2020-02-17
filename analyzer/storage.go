@@ -26,7 +26,7 @@ import (
 	"github.com/skydive-project/skydive/flow/storage/orientdb"
 	etcd "github.com/skydive-project/skydive/graffiti/etcd/client"
 	"github.com/skydive-project/skydive/graffiti/graph"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	es "github.com/skydive-project/skydive/storage/elasticsearch"
 )
 

@@ -31,7 +31,7 @@ import (
 	"github.com/safchain/insanelock"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
 // Protocol used to transport messages

@@ -23,7 +23,7 @@ import (
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/filters"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	"github.com/skydive-project/skydive/topology"
 	ws "github.com/skydive-project/skydive/websocket"
 )

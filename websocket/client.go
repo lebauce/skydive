@@ -34,7 +34,7 @@ import (
 
 	"github.com/skydive-project/skydive/graffiti/service"
 	shttp "github.com/skydive-project/skydive/http"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
 const (

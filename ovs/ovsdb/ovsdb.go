@@ -28,10 +28,9 @@ import (
 	"github.com/safchain/insanelock"
 	"github.com/socketplane/libovsdb"
 
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 )
 
-// OvsClient describes an OVS database client connection
 type OvsClient struct {
 	insanelock.RWMutex
 	ovsdb     *libovsdb.OvsdbClient

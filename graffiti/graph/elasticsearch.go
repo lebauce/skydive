@@ -27,7 +27,7 @@ import (
 
 	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/filters"
-	"github.com/skydive-project/skydive/logging"
+	"github.com/skydive-project/skydive/graffiti/logging"
 	es "github.com/skydive-project/skydive/storage/elasticsearch"
 )
 
