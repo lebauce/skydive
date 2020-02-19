@@ -277,17 +277,12 @@ func NewServerFromConfig() (*Server, error) {
 		storage:      storage,
 	}
 
-	validator, err := topology.NewSchemaValidator()
-	if err != nil {
-		return nil, fmt.Errorf("Unable to instantiate a schema validator: %s", err)
-	}
-
 	opts := hub.Opts{
 		WebsocketOpts:       config.NewWSServerOpts(),
 		WebsocketClientOpts: *wsClientOpts,
 		APIAuthBackend:      apiAuthBackend,
 		ClusterAuthBackend:  clusterAuthBackend,
-		Validator:           validator,
+		Validator:           topology.SchemaValidator,
 		StatusReporter:      s,
 		TLSConfig:           tlsConfig,
 		Peers:               peers,

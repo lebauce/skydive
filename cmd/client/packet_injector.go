@@ -94,7 +94,7 @@ var PacketInjectionCreate = &cobra.Command{
 			packet.DstMAC = request.DstMAC.String()
 		}
 
-		if err = validator.Validate(packet); err != nil {
+		if err = validator.Validate("packetinjection", packet); err != nil {
 			exitOnError(err)
 		}
 

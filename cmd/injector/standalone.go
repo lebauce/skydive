@@ -119,7 +119,7 @@ func GetPacketInjectRequest() (*pi.PacketInjectionRequest, error) {
 		TTL:              ttl,
 	}
 
-	if err := validator.Validate(request); err != nil {
+	if err := validator.Validate("packetinjectionrequest", request); err != nil {
 		return nil, err
 	}
 
