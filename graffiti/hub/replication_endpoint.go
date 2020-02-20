@@ -19,17 +19,16 @@ package hub
 
 import (
 	"net/url"
+	"strings"
 	"sync"
 	"sync/atomic"
 
 	"github.com/safchain/insanelock"
 
 	"github.com/skydive-project/skydive/common"
-	"github.com/skydive-project/skydive/config"
 	gcommon "github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	gws "github.com/skydive-project/skydive/graffiti/websocket"
-	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/websocket"
 	ws "github.com/skydive-project/skydive/websocket"
@@ -42,7 +41,7 @@ type ReplicatorPeer struct {
 	ws.DefaultSpeakerEventHandler
 	URL       *url.URL
 	Graph     *graph.Graph
-	AuthOpts  *shttp.AuthenticationOpts
+	opts      *websocket.ClientOpts
 	wsspeaker ws.Speaker
 	endpoint  *ReplicationEndpoint
 }
@@ -63,10 +62,6 @@ type ReplicationEndpoint struct {
 	cached       *graph.CachedBackend
 	replicateMsg atomic.Value
 	wg           sync.WaitGroup
-}
-
-func (t *ReplicationEndpoint) debug() bool {
-	return config.GetBool("analyzer.replication.debug")
 }
 
 // OnConnected is called when the peer gets connected then the whole graph
@@ -143,11 +138,8 @@ func (p *ReplicatorPeer) connect(wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	logging.GetLogger().Infof("Connecting to peer: %s", p.URL.String())
-	wsClient, err := config.NewWSClient(common.AnalyzerService, p.URL, websocket.ClientOpts{AuthOpts: p.AuthOpts})
-	if err != nil {
-		logging.GetLogger().Errorf("Failed to create client: %s", err)
-		return
-	}
+	serviceType := common.ServiceType(strings.SplitN(p.Graph.Origin(), ".", 2)[0])
+	wsClient := websocket.NewClient(p.Graph.GetHost(), serviceType, p.URL, *p.opts)
 
 	structClient := wsClient.UpgradeToStructSpeaker()
 	// will trigger shttp.SpeakerEventHandler, so OnConnected
@@ -166,11 +158,12 @@ func (p *ReplicatorPeer) disconnect() {
 	}
 }
 
-func (t *ReplicationEndpoint) addCandidate(url *url.URL, auth *shttp.AuthenticationOpts) *ReplicatorPeer {
+func (t *ReplicationEndpoint) addCandidate(addr string, port int, opts *websocket.ClientOpts) *ReplicatorPeer {
+	url := common.MakeURL("ws", addr, port, "/ws/replication", opts.TLSConfig != nil)
 	peer := &ReplicatorPeer{
 		URL:      url,
 		Graph:    t.Graph,
-		AuthOpts: auth,
+		opts:     opts,
 		endpoint: t,
 	}
 
@@ -185,9 +178,6 @@ func (t *ReplicationEndpoint) ConnectPeers() {
 
 	for _, candidate := range t.candidates {
 		t.wg.Add(1)
-		if t.debug() {
-			logging.GetLogger().Debugf("Connecting to peer %s", candidate.URL.String())
-		}
 		go candidate.connect(&t.wg)
 	}
 }
@@ -198,9 +188,6 @@ func (t *ReplicationEndpoint) DisconnectPeers() {
 	defer t.RUnlock()
 
 	for _, candidate := range t.candidates {
-		if t.debug() {
-			logging.GetLogger().Debugf("Disconnecting from peer %s", candidate.URL.String())
-		}
 		candidate.disconnect()
 	}
 	t.wg.Wait()
@@ -208,7 +195,7 @@ func (t *ReplicationEndpoint) DisconnectPeers() {
 
 // OnStructMessage is triggered by message coming from an other peer.
 func (t *ReplicationEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessage) {
-	if c.GetRemoteHost() == config.GetString("host_id") {
+	if c.GetRemoteHost() == t.Graph.GetHost() {
 		logging.GetLogger().Debugf("Ignore message from myself(%s), %s", c.GetURL().String())
 		return
 	}
@@ -228,11 +215,6 @@ func (t *ReplicationEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessag
 	// replicated graph, do not used persistent backend, another hub will handle this
 	t.cached.SetMode(graph.CacheOnlyMode)
 	defer t.cached.SetMode(graph.DefaultMode)
-
-	if t.debug() {
-		b, _ := msg.Bytes(ws.JSONProtocol)
-		logging.GetLogger().Debugf("Received message from peer %s: %s", c.GetURL().String(), string(b))
-	}
 
 	switch msgType {
 	case gws.SyncMsgType:
@@ -275,11 +257,6 @@ func (t *ReplicationEndpoint) OnStructMessage(c ws.Speaker, msg *ws.StructMessag
 
 // SendToPeers sends the message to all the peers
 func (t *ReplicationEndpoint) notifyPeers(msg *ws.StructMessage) {
-	if t.debug() {
-		b, _ := msg.Bytes(ws.JSONProtocol)
-		logging.GetLogger().Debugf("Broadcasting message to all peers: %s", string(b))
-	}
-
 	t.in.BroadcastMessage(msg)
 	t.out.BroadcastMessage(msg)
 }
@@ -406,7 +383,7 @@ func (t *ReplicationEndpoint) OnDisconnected(c ws.Speaker) {
 }
 
 // NewReplicationEndpoint returns a new server to be used by other analyzers for replication.
-func NewReplicationEndpoint(pool ws.StructSpeakerPool, auth *shttp.AuthenticationOpts, cached *graph.CachedBackend, g *graph.Graph, peers []common.ServiceAddress) (*ReplicationEndpoint, error) {
+func NewReplicationEndpoint(pool ws.StructSpeakerPool, opts *websocket.ClientOpts, cached *graph.CachedBackend, g *graph.Graph, peers []common.ServiceAddress) (*ReplicationEndpoint, error) {
 	t := &ReplicationEndpoint{
 		Graph:      g,
 		cached:     cached,
@@ -417,7 +394,7 @@ func NewReplicationEndpoint(pool ws.StructSpeakerPool, auth *shttp.Authenticatio
 	t.replicateMsg.Store(true)
 
 	for _, sa := range peers {
-		t.addCandidate(config.GetURL("ws", sa.Addr, sa.Port, "/ws/replication"), auth)
+		t.addCandidate(sa.Addr, sa.Port, opts)
 	}
 
 	pool.AddEventHandler(t)
