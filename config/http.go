@@ -21,13 +21,13 @@ import (
 	"crypto/tls"
 	"fmt"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/service"
 	shttp "github.com/skydive-project/skydive/http"
 )
 
 // NewHTTPServer returns a new HTTP server based on the configuration
-func NewHTTPServer(serviceType common.ServiceType) (*shttp.Server, error) {
-	sa, err := common.ServiceAddressFromString(GetString(serviceType.String() + ".listen"))
+func NewHTTPServer(serviceType service.Type) (*shttp.Server, error) {
+	sa, err := service.AddressFromString(GetString(serviceType.String() + ".listen"))
 	if err != nil {
 		return nil, fmt.Errorf("Configuration error: %s", err)
 	}

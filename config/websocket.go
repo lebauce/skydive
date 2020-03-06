@@ -21,13 +21,13 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/service"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/websocket"
 )
 
 // NewWSClient creates a Client based on the configuration
-func NewWSClient(clientType common.ServiceType, url *url.URL, opts websocket.ClientOpts) (*websocket.Client, error) {
+func NewWSClient(clientType service.Type, url *url.URL, opts websocket.ClientOpts) (*websocket.Client, error) {
 	host := GetString("host_id")
 
 	// override some of the options with config value

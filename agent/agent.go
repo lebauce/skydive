@@ -26,7 +26,6 @@ import (
 	"time"
 
 	api "github.com/skydive-project/skydive/api/server"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/client"
@@ -34,6 +33,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/graffiti/pod"
+	"github.com/skydive-project/skydive/graffiti/service"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
@@ -80,7 +80,7 @@ func NewAnalyzerStructClientPool(authOpts *shttp.AuthenticationOpts) (*ws.Struct
 
 	for _, sa := range addresses {
 		url := config.GetURL("ws", sa.Addr, sa.Port, "/ws/agent/topology")
-		c, err := config.NewWSClient(common.AgentService, url, websocket.ClientOpts{AuthOpts: authOpts, Protocol: websocket.ProtobufProtocol})
+		c, err := config.NewWSClient(config.AgentService, url, websocket.ClientOpts{AuthOpts: authOpts, Protocol: websocket.ProtobufProtocol})
 		if err != nil {
 			return nil, err
 		}
@@ -159,7 +159,7 @@ func NewAgent() (*Agent, error) {
 	}
 
 	hostID := config.GetString("host_id")
-	service := common.Service{ID: hostID, Type: common.AgentService}
+	service := service.Service{ID: hostID, Type: config.AgentService}
 
 	g := graph.NewGraph(hostID, backend, service.Type)
 

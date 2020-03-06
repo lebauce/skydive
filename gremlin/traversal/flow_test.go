@@ -116,7 +116,7 @@ func newFakeTableClient(nodeID string) *fakeTableClient {
 
 	tc := &fakeTableClient{
 		t: newTable(nodeID),
-		g: graph.NewGraph("", b, common.AnalyzerService),
+		g: graph.NewGraph("", b, "test"),
 	}
 
 	return tc

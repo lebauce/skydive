@@ -24,10 +24,10 @@ import (
 
 	"github.com/safchain/insanelock"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	gcommon "github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/service"
 	gws "github.com/skydive-project/skydive/graffiti/websocket"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
@@ -143,7 +143,7 @@ func (p *ReplicatorPeer) connect(wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	logging.GetLogger().Infof("Connecting to peer: %s", p.URL.String())
-	wsClient, err := config.NewWSClient(common.AnalyzerService, p.URL, websocket.ClientOpts{AuthOpts: p.AuthOpts})
+	wsClient, err := config.NewWSClient(config.AnalyzerService, p.URL, websocket.ClientOpts{AuthOpts: p.AuthOpts})
 	if err != nil {
 		logging.GetLogger().Errorf("Failed to create client: %s", err)
 		return
@@ -406,7 +406,7 @@ func (t *ReplicationEndpoint) OnDisconnected(c ws.Speaker) {
 }
 
 // NewReplicationEndpoint returns a new server to be used by other analyzers for replication.
-func NewReplicationEndpoint(pool ws.StructSpeakerPool, auth *shttp.AuthenticationOpts, cached *graph.CachedBackend, g *graph.Graph, peers []common.ServiceAddress) (*ReplicationEndpoint, error) {
+func NewReplicationEndpoint(pool ws.StructSpeakerPool, auth *shttp.AuthenticationOpts, cached *graph.CachedBackend, g *graph.Graph, peers []service.Address) (*ReplicationEndpoint, error) {
 	t := &ReplicationEndpoint{
 		Graph:      g,
 		cached:     cached,

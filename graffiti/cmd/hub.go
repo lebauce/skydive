@@ -25,12 +25,12 @@ import (
 	"time"
 
 	api "github.com/skydive-project/skydive/api/server"
-	"github.com/skydive-project/skydive/common"
 	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
 	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/graffiti/hub"
+	"github.com/skydive-project/skydive/graffiti/service"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
@@ -60,7 +60,7 @@ var HubCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		logging.GetLogger().Noticef("Graffiti hub starting...")
 
-		sa, err := common.ServiceAddressFromString(hubListen)
+		sa, err := service.AddressFromString(hubListen)
 		if err != nil {
 			logging.GetLogger().Errorf("Configuration error: %s", err)
 			os.Exit(1)
@@ -84,7 +84,7 @@ var HubCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		service := common.Service{ID: hostname, Type: "Hub"}
+		service := service.Service{ID: hostname, Type: "Hub"}
 		g := graph.NewGraph(hostname, cached, serviceType)
 
 		httpServer := shttp.NewServer(hostname, service.Type, sa.Addr, sa.Port, nil)

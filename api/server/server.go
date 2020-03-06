@@ -50,7 +50,7 @@ import (
 	auth "github.com/abbot/go-http-auth"
 	etcd "github.com/coreos/etcd/client"
 
-	"github.com/skydive-project/skydive/common"
+	"github.com/skydive-project/skydive/graffiti/service"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/rbac"
@@ -246,7 +246,7 @@ func (a *Server) RegisterAPIHandler(handler Handler, authBackend shttp.Authentic
 	return nil
 }
 
-func (a *Server) addAPIRootRoute(service common.Service, authBackend shttp.AuthenticationBackend) {
+func (a *Server) addAPIRootRoute(service service.Service, authBackend shttp.AuthenticationBackend) {
 	// swagger:operation GET / getApi
 	//
 	// Get API version
@@ -388,7 +388,7 @@ func (a *Server) addLoginRoute(authBackend shttp.AuthenticationBackend) {
 }
 
 // NewAPI creates a new API server based on http
-func NewAPI(server *shttp.Server, kapi etcd.KeysAPI, service common.Service, authBackend shttp.AuthenticationBackend) (*Server, error) {
+func NewAPI(server *shttp.Server, kapi etcd.KeysAPI, service service.Service, authBackend shttp.AuthenticationBackend) (*Server, error) {
 	apiServer := &Server{
 		HTTPServer: server,
 		EtcdKeyAPI: kapi,

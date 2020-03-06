@@ -26,10 +26,10 @@ import (
 	"github.com/google/gopacket/layers"
 	valid "gopkg.in/validator.v2"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/flow"
 	"github.com/skydive-project/skydive/flow/probes"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
+	"github.com/skydive-project/skydive/graffiti/service"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 )
 
@@ -93,7 +93,7 @@ func isValidAddress(v interface{}, param string) error {
 		return nil
 	}
 
-	if _, err := common.ServiceAddressFromString(addr); err != nil {
+	if _, err := service.AddressFromString(addr); err != nil {
 		return AddressNotValid()
 	}
 

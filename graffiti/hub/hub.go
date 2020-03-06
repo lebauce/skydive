@@ -18,11 +18,11 @@
 package hub
 
 import (
-	"github.com/skydive-project/skydive/common"
 	gc "github.com/skydive-project/skydive/graffiti/common"
 	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
+	"github.com/skydive-project/skydive/graffiti/service"
 	"github.com/skydive-project/skydive/graffiti/validator"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
@@ -126,7 +126,7 @@ func (h *Hub) SubscriberServer() *websocket.StructServer {
 }
 
 // NewHub returns a new hub
-func NewHub(server *shttp.Server, g *graph.Graph, cached *graph.CachedBackend, apiAuthBackend, clusterAuthBackend shttp.AuthenticationBackend, clusterAuthOptions *shttp.AuthenticationOpts, podEndpoint string, peers []common.ServiceAddress, opts Opts) (*Hub, error) {
+func NewHub(server *shttp.Server, g *graph.Graph, cached *graph.CachedBackend, apiAuthBackend, clusterAuthBackend shttp.AuthenticationBackend, clusterAuthOptions *shttp.AuthenticationOpts, podEndpoint string, peers []service.Address, opts Opts) (*Hub, error) {
 	var embeddedEtcd *etcdserver.EmbeddedServer
 	var err error
 	if opts.EtcdServerOpts != nil {

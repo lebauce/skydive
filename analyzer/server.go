@@ -29,7 +29,6 @@ import (
 	"github.com/skydive-project/skydive/alert"
 	api "github.com/skydive-project/skydive/api/server"
 	"github.com/skydive-project/skydive/api/types"
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/config"
 	"github.com/skydive-project/skydive/flow"
 	ondemand "github.com/skydive-project/skydive/flow/ondemand/client"
@@ -40,6 +39,7 @@ import (
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/graph/traversal"
 	"github.com/skydive-project/skydive/graffiti/hub"
+	"github.com/skydive-project/skydive/graffiti/service"
 	ge "github.com/skydive-project/skydive/gremlin/traversal"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
@@ -200,7 +200,7 @@ func (s *Server) Stop() {
 func NewServerFromConfig() (*Server, error) {
 	embedEtcd := config.GetBool("etcd.embedded")
 	host := config.GetString("host_id")
-	service := common.Service{ID: host, Type: common.AnalyzerService}
+	service := service.Service{ID: host, Type: config.AnalyzerService}
 
 	var etcdServerOpts *etcdserver.EmbeddedServerOpts
 	var err error
@@ -216,7 +216,7 @@ func NewServerFromConfig() (*Server, error) {
 		}
 	}
 
-	etcdClientOpts := etcdclient.ClientOpts{
+	etcdClientOpts := etcdclient.Opts{
 		Servers: config.GetEtcdServerAddrs(),
 		Timeout: time.Duration(config.GetInt("etcd.client_timeout")) * time.Second,
 	}
