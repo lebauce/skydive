@@ -27,26 +27,27 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/skydive-project/skydive/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/pod"
+	"github.com/skydive-project/skydive/graffiti/service"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/websocket"
 )
 
+const podServiceType = service.Type("Pod")
+
 var (
-	hubServers  []string
-	podListen   string
-	serviceType = common.ServiceType("Pod")
+	hubServers []string
+	podListen  string
 )
 
-func newHubClientPool(host string, addresses []common.ServiceAddress, opts websocket.ClientOpts) *websocket.StructClientPool {
+func newHubClientPool(host string, addresses []service.Address, opts websocket.ClientOpts) *websocket.StructClientPool {
 	pool := websocket.NewStructClientPool("HubClientPool", websocket.PoolOpts{Logger: opts.Logger})
 
 	for _, sa := range addresses {
 		url, _ := url.Parse(fmt.Sprintf("ws://%s:%d/ws/pod", sa.Addr, sa.Port))
-		client := websocket.NewClient(host, serviceType, url, opts)
+		client := websocket.NewClient(host, podServiceType, url, opts)
 		pool.AddClient(client)
 	}
 
@@ -76,13 +77,13 @@ var PodCmd = &cobra.Command{
 
 		clusterAuthOptions := &shttp.AuthenticationOpts{}
 
-		g := graph.NewGraph(hostname, backend, serviceType)
+		g := graph.NewGraph(hostname, backend, podServiceType)
 
 		authBackend := shttp.NewNoAuthenticationBackend()
 
-		var addresses []common.ServiceAddress
+		var addresses []service.Address
 		for _, address := range hubServers {
-			sa, err := common.ServiceAddressFromString(address)
+			sa, err := service.AddressFromString(address)
 			if err != nil {
 				logging.GetLogger().Error(err)
 				os.Exit(1)
@@ -112,7 +113,7 @@ var PodCmd = &cobra.Command{
 			APIAuthBackend: authBackend,
 		}
 
-		pod, err := pod.NewPod(hostname, serviceType, podListen, "/ws/pod", g, podOpts)
+		pod, err := pod.NewPod(hostname, podServiceType, podListen, "/ws/pod", g, podOpts)
 		if err != nil {
 			logging.GetLogger().Error(err)
 			os.Exit(1)

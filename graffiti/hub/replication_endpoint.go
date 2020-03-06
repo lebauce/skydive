@@ -25,10 +25,11 @@ import (
 
 	"github.com/safchain/insanelock"
 
-	"github.com/skydive-project/skydive/common"
 	gcommon "github.com/skydive-project/skydive/graffiti/common"
 	"github.com/skydive-project/skydive/graffiti/graph"
+	"github.com/skydive-project/skydive/graffiti/service"
 	gws "github.com/skydive-project/skydive/graffiti/websocket"
+	"github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/websocket"
 	ws "github.com/skydive-project/skydive/websocket"
@@ -138,7 +139,7 @@ func (p *ReplicatorPeer) connect(wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	logging.GetLogger().Infof("Connecting to peer: %s", p.URL.String())
-	serviceType := common.ServiceType(strings.SplitN(p.Graph.Origin(), ".", 2)[0])
+	serviceType := service.Type(strings.SplitN(p.Graph.Origin(), ".", 2)[0])
 	wsClient := websocket.NewClient(p.Graph.GetHost(), serviceType, p.URL, *p.opts)
 
 	structClient := wsClient.UpgradeToStructSpeaker()
@@ -159,7 +160,7 @@ func (p *ReplicatorPeer) disconnect() {
 }
 
 func (t *ReplicationEndpoint) addCandidate(addr string, port int, opts *websocket.ClientOpts) *ReplicatorPeer {
-	url := common.MakeURL("ws", addr, port, "/ws/replication", opts.TLSConfig != nil)
+	url := http.MakeURL("ws", addr, port, "/ws/replication", opts.TLSConfig != nil)
 	peer := &ReplicatorPeer{
 		URL:      url,
 		Graph:    t.Graph,
@@ -383,7 +384,7 @@ func (t *ReplicationEndpoint) OnDisconnected(c ws.Speaker) {
 }
 
 // NewReplicationEndpoint returns a new server to be used by other analyzers for replication.
-func NewReplicationEndpoint(pool ws.StructSpeakerPool, opts *websocket.ClientOpts, cached *graph.CachedBackend, g *graph.Graph, peers []common.ServiceAddress) (*ReplicationEndpoint, error) {
+func NewReplicationEndpoint(pool ws.StructSpeakerPool, opts *websocket.ClientOpts, cached *graph.CachedBackend, g *graph.Graph, peers []service.Address) (*ReplicationEndpoint, error) {
 	t := &ReplicationEndpoint{
 		Graph:      g,
 		cached:     cached,

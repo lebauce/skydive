@@ -24,12 +24,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/skydive-project/skydive/common"
-	api "github.com/skydive-project/skydive/graffiti/api/server"
 	etcdclient "github.com/skydive-project/skydive/graffiti/etcd/client"
 	etcdserver "github.com/skydive-project/skydive/graffiti/etcd/server"
 	"github.com/skydive-project/skydive/graffiti/graph"
 	"github.com/skydive-project/skydive/graffiti/hub"
+	"github.com/skydive-project/skydive/graffiti/service"
 	shttp "github.com/skydive-project/skydive/http"
 	"github.com/skydive-project/skydive/logging"
 	"github.com/skydive-project/skydive/websocket"
@@ -49,6 +48,8 @@ var (
 	pingDelay        int
 	pongTimeout      int
 )
+
+const hubServiceType = service.Type("Hub")
 
 // HubCmd describes the graffiti hub command
 var HubCmd = &cobra.Command{
@@ -77,7 +78,7 @@ var HubCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		g := graph.NewGraph(hostname, cached, serviceType)
+		g := graph.NewGraph(hostname, cached, hubServiceType)
 
 		authBackend := shttp.NewNoAuthenticationBackend()
 
@@ -109,13 +110,11 @@ var HubCmd = &cobra.Command{
 			ClusterAuthBackend: authBackend,
 		}
 
-		hub, err := hub.NewHub(hostname, common.ServiceType("Hub"), hubListen, g, cached, "/ws/pod", hubOpts)
+		hub, err := hub.NewHub(hostname, hubServiceType, hubListen, g, cached, "/ws/pod", hubOpts)
 		if err != nil {
 			logging.GetLogger().Error(err)
 			os.Exit(1)
 		}
-
-		api.RegisterStatusAPI(hub.HTTPServer(), hub, authBackend)
 
 		hub.Start()
 
