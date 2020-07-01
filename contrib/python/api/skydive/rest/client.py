@@ -234,7 +234,7 @@ class RESTClient:
     def node_create(self, node_id=None, host=None, metadata=None):
         now = int(time())
         if not node_id:
-            edge_id = str(uuid4())
+            node_id = str(uuid4())
 
         if not host:
             host = gethostname()
@@ -260,7 +260,8 @@ class RESTClient:
         path = "/api/node/%s" % node_id
         return self.request(path, method="DELETE")
 
-    def edge_create(self, parent_id, child_id, edge_id=None, host=None, metadata=None):
+    def edge_create(self, parent_id, child_id, edge_id=None, host=None,
+                    metadata=None):
         now = int(time())
         if not edge_id:
             edge_id = str(uuid4())
